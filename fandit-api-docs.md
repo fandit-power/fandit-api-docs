@@ -5,7 +5,7 @@ Este documento reúne en un solo archivo continuo toda la documentación técnic
 ## URLs base
 
 - Dominio genérico: `https://api.fandit.es`
-- Marca blanca: `https://{plataforma}.api.fandit.es`, sustituyendo `{plataforma}` por el subdominio de tu marca (por ejemplo, `https://demo.api.fandit.es/api/v2/`). Usa este dominio si tu cuenta está configurada como marca blanca; la URL debe contener el nombre de tu marca para que la API devuelva la información propia de esa marca en vez de la genérica.
+- Marca blanca: `https://{plataforma}.api.fandit.es`, sustituyendo `{plataforma}` por el subdominio de tu marca (por ejemplo, `https://tu-marca.api.fandit.es/api/v2/`). Usa este dominio si tu cuenta está configurada como marca blanca; la URL debe contener el nombre de tu marca para que la API devuelva la información propia de esa marca en vez de la genérica.
 
 Todos los endpoints de la versión 2 cuelgan de `/api/v2/`. Los endpoints legacy de Single Sign-On (sección "Autenticación (legacy / SSO)" más abajo) cuelgan de `/api/v1/users/partners-brand/` y solo están disponibles para marcas configuradas con SSO habilitado.
 
@@ -254,7 +254,7 @@ curl --request GET \
   "first_name": "Carlos",
   "last_name": "Ruiz",
   "username": "carlos.ruiz",
-  "phone": "+34611223344",
+  "phone": "+34600000005",
   "business_name": "Consultora Ayudas y Subvenciones S.L.",
   "profile_avatar": "https://fandit-media.s3.amazonaws.com/experts/avatars/542.jpg",
   "profile_avatar_thumbnail": "https://fandit-media.s3.amazonaws.com/experts/avatars/542_thumb.jpg",
@@ -370,9 +370,9 @@ curl --request GET \
       "url": "marketplace.fandit.es"
     }
   ],
-  "email": "carlos.ruiz@consultora-ayudas.es",
+  "email": "carlos.ruiz@example.com",
   "website": "https://consultora-ayudas.es",
-  "contact_email": "contacto@consultora-ayudas.es",
+  "contact_email": "contacto@example.com",
   "profile_image": "https://fandit-media.s3.amazonaws.com/experts/profile/542.jpg",
   "title": "Consultor senior en subvenciones públicas",
   "experience": "Más de 10 años gestionando ayudas y subvenciones para pymes.",
@@ -438,7 +438,7 @@ Petición para obtener el token de experto.
 ```bash
 curl --request POST \
   --url 'https://api.fandit.es/api/v2/experts/login' \
-  --data '{"email":"tu@correo.es","password":"TU_CONTRASEÑA"}' \
+  --data '{"email":"tu@example.com","password":"TU_CONTRASEÑA"}' \
   --header 'Content-Type: application/json'
 ```
 
@@ -448,13 +448,13 @@ curl --request POST \
 
 ```json
 {
-  "token": "9a1c3f5e7b2d4a6c8e0f1b3d5a7c9e1f3b5d7a9c",
+  "token": "EXPERT_TOKEN_DE_EJEMPLO",
   "expert": {
     "id": 542,
     "first_name": "Carlos",
     "last_name": "Ruiz",
     "username": "carlos.ruiz",
-    "phone": "+34611223344",
+    "phone": "+34600000005",
     "business_name": "Consultora Ayudas y Subvenciones S.L.",
     "profile_avatar": "https://fandit-media.s3.amazonaws.com/experts/avatars/542.jpg",
     "profile_avatar_thumbnail": "https://fandit-media.s3.amazonaws.com/experts/avatars/542_thumb.jpg",
@@ -570,9 +570,9 @@ curl --request POST \
         "url": "marketplace.fandit.es"
       }
     ],
-    "email": "carlos.ruiz@consultora-ayudas.es",
+    "email": "carlos.ruiz@example.com",
     "website": "https://consultora-ayudas.es",
-    "contact_email": "contacto@consultora-ayudas.es",
+    "contact_email": "contacto@example.com",
     "profile_image": "https://fandit-media.s3.amazonaws.com/experts/profile/542.jpg",
     "title": "Consultor senior en subvenciones públicas",
     "experience": "Más de 10 años gestionando ayudas y subvenciones para pymes.",
@@ -640,7 +640,7 @@ curl --request GET \
 ```json
 {
   "id": 10482,
-  "email": "laura.gomez@empresa.es",
+  "email": "laura.gomez@example.com",
   "username": "laura.gomez",
   "first_name": "Laura",
   "last_name": "Gómez",
@@ -673,7 +673,7 @@ curl --request GET \
   "general_notifications": true,
   "distributor": "FANDIT",
   "business_name": "Innovatech Soluciones S.L.",
-  "phone": "+34600123456",
+  "phone": "+34600000000",
   "fund_types_list": [
     1,
     4
@@ -716,7 +716,7 @@ Petición para obtener los token de usuario y experto si es el caso.
 ```bash
 curl --request POST \
   --url 'https://api.fandit.es/api/v2/users/login/' \
-  --data '{"email":"tu@correo.es","password":"TU_CONTRASEÑA"}' \
+  --data '{"email":"tu@example.com","password":"TU_CONTRASEÑA"}' \
   --header 'Content-Type: application/json'
 ```
 
@@ -726,11 +726,11 @@ curl --request POST \
 
 ```json
 {
-  "token": "9a1c3f5e7b2d4a6c8e0f1b3d5a7c9e1f3b5d7a9c",
-  "ExpertToken": "b3e1a2c4d5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+  "token": "TOKEN_DE_EJEMPLO",
+  "ExpertToken": "EXPERT_TOKEN_DE_EJEMPLO",
   "user": {
     "id": 10482,
-    "email": "laura.gomez@empresa.es",
+    "email": "laura.gomez@example.com",
     "username": "laura.gomez",
     "first_name": "Laura",
     "last_name": "Gómez",
@@ -763,7 +763,7 @@ curl --request POST \
     "general_notifications": true,
     "distributor": "FANDIT",
     "business_name": "Innovatech Soluciones S.L.",
-    "phone": "+34600123456",
+    "phone": "+34600000000",
     "fund_types_list": [
       1,
       4
@@ -807,7 +807,7 @@ Petición para validar si un correo ya existe en la plataforma.
 
 ```bash
 curl --request GET \
-  --url 'https://api.fandit.es/api/v1/users/partners-brand/check-user/laura.gomez@ejemplo.com'
+  --url 'https://api.fandit.es/api/v1/users/partners-brand/check-user/laura.gomez@example.com'
 ```
 
 
@@ -895,7 +895,7 @@ Petición para iniciar sesión de un usuario con su correo y contraseña.
 ```bash
 curl --request POST \
   --url 'https://api.fandit.es/api/v1/users/partners-brand/login/' \
-  --data '{"email":"laura.gomez@ejemplo.com","password":"TU_CONTRASEÑA"}' \
+  --data '{"email":"laura.gomez@example.com","password":"TU_CONTRASEÑA"}' \
   --header 'Content-Type: application/json'
 ```
 
@@ -992,7 +992,7 @@ Petición para registrar un nuevo usuario en la plataforma.
 ```bash
 curl --request POST \
   --url 'https://api.fandit.es/api/v1/users/partners-brand/registration/' \
-  --data '{"first_name":"Laura","last_name":"Gómez","email":"laura.gomez@ejemplo.com","password1":"TU_CONTRASEÑA","password2":"TU_CONTRASEÑA","platform":"","general_notifications":false}' \
+  --data '{"first_name":"Laura","last_name":"Gómez","email":"laura.gomez@example.com","password1":"TU_CONTRASEÑA","password2":"TU_CONTRASEÑA","platform":"","general_notifications":false}' \
   --header 'Content-Type: application/json'
 ```
 
@@ -1073,7 +1073,7 @@ curl --request GET \
   "results": [
     {
       "id": 10482,
-      "email": "usuario@empresa.es",
+      "email": "usuario@example.com",
       "username": "usuario_empresa",
       "first_name": "Laura",
       "last_name": "Gómez",
@@ -1105,7 +1105,7 @@ curl --request GET \
       "general_notifications": true,
       "distributor": "FANDIT",
       "business_name": "Empresa Ejemplo SL",
-      "phone": "600123456",
+      "phone": "600000000",
       "fund_types_list": [
         1,
         2
@@ -1126,7 +1126,7 @@ curl --request GET \
     },
     {
       "id": 10501,
-      "email": "contacto@innovatech.es",
+      "email": "contacto@example.com",
       "username": "innovatech_sl",
       "first_name": "Carlos",
       "last_name": "Fernández",
@@ -1153,7 +1153,7 @@ curl --request GET \
       "general_notifications": false,
       "distributor": "FANDIT",
       "business_name": "Innovatech Soluciones SL",
-      "phone": "611987654",
+      "phone": "600000004",
       "fund_types_list": [
         3
       ],
@@ -1218,7 +1218,7 @@ Petición para crear un nuevo usuario.
 ```bash
 curl --request POST \
   --url 'https://api.fandit.es/api/v2/users/' \
-  --data '{"email":"nuevo.usuario@empresa.es","password":"TU_CONTRASEÑA","username":"nuevo_usuario","first_name":"Marta","last_name":"Ruiz","business_name":"Consultora Ejemplo SL","phone":"622345678","distributor":"FANDIT","general_notifications":true,"communities":[1],"provinces":[28],"applicants":[1],"region_types":[1],"action_items":[1],"activities":[3],"fund_types":[1],"origins":[1]}' \
+  --data '{"email":"nuevo.usuario@example.com","password":"TU_CONTRASEÑA","username":"nuevo_usuario","first_name":"Marta","last_name":"Ruiz","business_name":"Consultora Ejemplo SL","phone":"600000003","distributor":"FANDIT","general_notifications":true,"communities":[1],"provinces":[28],"applicants":[1],"region_types":[1],"action_items":[1],"activities":[3],"fund_types":[1],"origins":[1]}' \
   --header 'Authorization: Token TU_API_KEY'
 ```
 
@@ -1229,7 +1229,7 @@ curl --request POST \
 ```json
 {
   "id": 10530,
-  "email": "nuevo.usuario@empresa.es",
+  "email": "nuevo.usuario@example.com",
   "username": "nuevo_usuario",
   "first_name": "Marta",
   "last_name": "Ruiz",
@@ -1238,7 +1238,7 @@ curl --request POST \
   "general_notifications": true,
   "distributor": "FANDIT",
   "business_name": "Consultora Ejemplo SL",
-  "phone": "622345678",
+  "phone": "600000003",
   "communities_list": [
     1
   ],
@@ -1355,7 +1355,7 @@ curl --request GET \
 ```json
 {
   "id": 10482,
-  "email": "usuario@empresa.es",
+  "email": "usuario@example.com",
   "username": "usuario_empresa",
   "first_name": "Laura",
   "last_name": "Gómez",
@@ -1364,7 +1364,7 @@ curl --request GET \
   "general_notifications": true,
   "distributor": "FANDIT",
   "business_name": "Empresa Ejemplo SL",
-  "phone": "600123456",
+  "phone": "600000000",
   "communities_list": [
     1,
     8
@@ -1462,7 +1462,7 @@ Petición para actualizar los datos de un usuario específico. `PUT` también es
 ```bash
 curl --request PATCH \
   --url 'https://api.fandit.es/api/v2/users/10482/' \
-  --data '{"phone":"600123456","business_name":"Empresa Ejemplo SL","general_notifications":true}' \
+  --data '{"phone":"600000000","business_name":"Empresa Ejemplo SL","general_notifications":true}' \
   --header 'Authorization: Token TU_API_KEY'
 ```
 
@@ -1473,7 +1473,7 @@ curl --request PATCH \
 ```json
 {
   "id": 10482,
-  "email": "usuario@empresa.es",
+  "email": "usuario@example.com",
   "username": "usuario_empresa",
   "first_name": "Laura",
   "last_name": "Gómez",
@@ -1482,7 +1482,7 @@ curl --request PATCH \
   "general_notifications": true,
   "distributor": "FANDIT",
   "business_name": "Empresa Ejemplo SL",
-  "phone": "600123456",
+  "phone": "600000000",
   "communities_list": [
     1,
     8
@@ -1559,7 +1559,7 @@ curl --request GET \
 ```json
 {
   "user_id": 10482,
-  "user_email": "laura.gomez@empresa.es",
+  "user_email": "laura.gomez@example.com",
   "monthly_used_credits": 34,
   "max_credits": 100,
   "credits_bag": 10,
@@ -2578,13 +2578,13 @@ curl --request GET \
   "results": [
     {
       "id": 12,
-      "email": "javier.ortega@fandit.es",
+      "email": "javier.ortega@example.com",
       "first_name": "Javier",
       "last_name": "Ortega"
     },
     {
       "id": 34,
-      "email": "marta.sanchez@fandit.es",
+      "email": "marta.sanchez@example.com",
       "first_name": "Marta",
       "last_name": "Sánchez"
     }
@@ -2671,16 +2671,16 @@ curl --request GET \
       "client_data": {
         "id": 982,
         "business_name": "Innovaciones Digitales SL",
-        "email": "contacto@innovacionesdigitales.es",
+        "email": "contacto@example.com",
         "nif": "B12345678"
       },
       "expert_data": {
         "id": 34,
         "name": "Marta Sánchez",
-        "email": "marta.sanchez@fandit.es"
+        "email": "marta.sanchez@example.com"
       },
       "company": "Innovaciones Digitales SL",
-      "phone": "600112233",
+      "phone": "600000002",
       "platform": "fandit",
       "reference": "REF-2026-0088",
       "additional_data": "Solicitud vinculada a la convocatoria Kit Digital 2026",
@@ -3063,16 +3063,16 @@ curl --request GET \
   "client_data": {
     "id": 982,
     "business_name": "Innovaciones Digitales SL",
-    "email": "contacto@innovacionesdigitales.es",
+    "email": "contacto@example.com",
     "nif": "B12345678"
   },
   "expert_data": {
     "id": 34,
     "name": "Marta Sánchez",
-    "email": "marta.sanchez@fandit.es"
+    "email": "marta.sanchez@example.com"
   },
   "company": "Innovaciones Digitales SL",
-  "phone": "600112233",
+  "phone": "600000002",
   "platform": "fandit",
   "reference": "REF-2026-0088",
   "additional_data": "Solicitud vinculada a la convocatoria Kit Digital 2026",
@@ -3136,7 +3136,7 @@ curl --request GET \
         "others": 8
       },
       "expert_data": {
-        "email": "marta.sanchez@fandit.es",
+        "email": "marta.sanchez@example.com",
         "id": 34,
         "name": "Marta Sánchez"
       },
@@ -3229,7 +3229,7 @@ curl --request GET \
       "expert_data": {
         "id": 45,
         "name": "María Fernández",
-        "email": "maria.fernandez@despacho.es"
+        "email": "maria.fernandez@example.com"
       },
       "experts": [
         45,
@@ -3243,7 +3243,7 @@ curl --request GET \
       },
       "nif": "B12345678",
       "business_name": "Innovatech Soluciones SL",
-      "email": "contacto@innovatech-soluciones.es",
+      "email": "contacto@example.com",
       "phone": null,
       "reference": null,
       "notes": null,
@@ -3256,7 +3256,7 @@ curl --request GET \
       "legal_representative_name": "Carlos Ruiz Gómez",
       "legal_representative_nif": "12345678Z",
       "legal_representation_type": "Administrador único",
-      "contacts": "Carlos Ruiz Gómez - 600111222",
+      "contacts": "Carlos Ruiz Gómez - 600000001",
       "cnaes": [
         6201,
         6202
@@ -3284,7 +3284,7 @@ curl --request GET \
       "expert_data": {
         "id": 52,
         "name": "Javier Ortega",
-        "email": "javier.ortega@despacho.es"
+        "email": "javier.ortega@example.com"
       },
       "experts": [
         52
@@ -3297,7 +3297,7 @@ curl --request GET \
       },
       "nif": "44556677Q",
       "business_name": "Panadería Hermanos Soler",
-      "email": "info@panaderiasoler.es",
+      "email": "info@example.com",
       "phone": null,
       "reference": "REF-2024-0198",
       "notes": "Cliente interesado en ayudas de digitalización",
@@ -3310,7 +3310,7 @@ curl --request GET \
       "legal_representative_name": "Marta Soler Puig",
       "legal_representative_nif": "87654321X",
       "legal_representation_type": "Autónomo",
-      "contacts": "Marta Soler Puig - 611223344",
+      "contacts": "Marta Soler Puig - 600000005",
       "cnaes": [
         1071
       ],
@@ -3367,7 +3367,7 @@ Petición crear un nuevo cliente.
 ```bash
 curl --request POST \
   --url 'https://api.fandit.es/api/v2/clients/' \
-  --data '{"nif":"B98765432","business_name":"Talleres Mecánicos Rivas SL","email":"admin@talleresrivas.es","phone":"911223344"}' \
+  --data '{"nif":"B98765432","business_name":"Talleres Mecánicos Rivas SL","email":"admin@example.com","phone":"600000006"}' \
   --header 'Authorization: ExpertToken TU_EXPERT_TOKEN'
 ```
 
@@ -3381,7 +3381,7 @@ curl --request POST \
   "expert_data": {
     "id": 45,
     "name": "María Fernández",
-    "email": "maria.fernandez@despacho.es"
+    "email": "maria.fernandez@example.com"
   },
   "experts": [
     45
@@ -3394,8 +3394,8 @@ curl --request POST \
   },
   "nif": "B98765432",
   "business_name": "Talleres Mecánicos Rivas SL",
-  "email": "admin@talleresrivas.es",
-  "phone": "911223344",
+  "email": "admin@example.com",
+  "phone": "600000006",
   "reference": null,
   "notes": null,
   "province": [],
@@ -3552,7 +3552,7 @@ curl --request GET \
   "expert_data": {
     "id": 45,
     "name": "María Fernández",
-    "email": "maria.fernandez@despacho.es"
+    "email": "maria.fernandez@example.com"
   },
   "experts": [
     45,
@@ -3566,7 +3566,7 @@ curl --request GET \
   },
   "nif": "B12345678",
   "business_name": "Innovatech Soluciones SL",
-  "email": "contacto@innovatech-soluciones.es",
+  "email": "contacto@example.com",
   "phone": null,
   "reference": null,
   "notes": null,
@@ -3579,7 +3579,7 @@ curl --request GET \
   "legal_representative_name": "Carlos Ruiz Gómez",
   "legal_representative_nif": "12345678Z",
   "legal_representation_type": "Administrador único",
-  "contacts": "Carlos Ruiz Gómez - 600111222",
+  "contacts": "Carlos Ruiz Gómez - 600000001",
   "cnaes": [
     6201,
     6202
@@ -3664,7 +3664,7 @@ Petición para actualizar los datos de un cliente específico. `PUT` también es
 ```bash
 curl --request PATCH \
   --url 'https://api.fandit.es/api/v2/clients/3021/' \
-  --data '{"business_name":"Innovatech Soluciones SL","phone":"910445566","public":true,"employees_quantity":22,"last_year_billing":920000,"investment_budget":150000}' \
+  --data '{"business_name":"Innovatech Soluciones SL","phone":"600000007","public":true,"employees_quantity":22,"last_year_billing":920000,"investment_budget":150000}' \
   --header 'Authorization: ExpertToken TU_EXPERT_TOKEN'
 ```
 
@@ -3678,7 +3678,7 @@ curl --request PATCH \
   "expert_data": {
     "id": 45,
     "name": "María Fernández",
-    "email": "maria.fernandez@despacho.es"
+    "email": "maria.fernandez@example.com"
   },
   "experts": [
     45,
@@ -3692,8 +3692,8 @@ curl --request PATCH \
   },
   "nif": "B12345678",
   "business_name": "Innovatech Soluciones SL",
-  "email": "contacto@innovatech-soluciones.es",
-  "phone": "910445566",
+  "email": "contacto@example.com",
+  "phone": "600000007",
   "reference": null,
   "notes": null,
   "province": [
@@ -3705,7 +3705,7 @@ curl --request PATCH \
   "legal_representative_name": "Carlos Ruiz Gómez",
   "legal_representative_nif": "12345678Z",
   "legal_representation_type": "Administrador único",
-  "contacts": "Carlos Ruiz Gómez - 600111222",
+  "contacts": "Carlos Ruiz Gómez - 600000001",
   "cnaes": [
     6201,
     6202
@@ -3793,7 +3793,7 @@ curl --request GET \
   "results": [
     {
       "id": 3021,
-      "email": "contacto@empresaejemplo.es",
+      "email": "contacto@example.com",
       "name": "Ana López",
       "company": "Empresa Ejemplo SL",
       "cif": "B12345678",
@@ -3825,7 +3825,7 @@ curl --request GET \
     },
     {
       "id": 3045,
-      "email": "info@innovatech.es",
+      "email": "info@example.com",
       "name": "Carlos Fernández",
       "company": "Innovatech Soluciones SL",
       "cif": "B87654321",
@@ -3900,7 +3900,7 @@ Petición crear un nuevo contacto.
 ```bash
 curl --request POST \
   --url 'https://api.fandit.es/api/v2/summary-topics/' \
-  --data '{"email":"nuevo.contacto@empresa.es","name":"Marta Ruiz","company":"Consultora Ejemplo SL","phone":"600112233","lead_status":1,"priority_status":1,"investment_capital":80000,"project_description":"Proyecto de digitalización comercial","applicants":[1],"provinces":[28],"action_items":[1],"cnaes":[4321]}' \
+  --data '{"email":"nuevo.contacto@example.com","name":"Marta Ruiz","company":"Consultora Ejemplo SL","phone":"600000002","lead_status":1,"priority_status":1,"investment_capital":80000,"project_description":"Proyecto de digitalización comercial","applicants":[1],"provinces":[28],"action_items":[1],"cnaes":[4321]}' \
   --header 'Authorization: Token TU_API_KEY'
 ```
 
@@ -3911,7 +3911,7 @@ curl --request POST \
 ```json
 {
   "id": 3102,
-  "email": "nuevo.contacto@empresa.es",
+  "email": "nuevo.contacto@example.com",
   "name": "Marta Ruiz",
   "company": "Consultora Ejemplo SL",
   "cif": "B11223344",
@@ -3983,7 +3983,7 @@ curl --request GET \
 ```json
 {
   "id": 3021,
-  "email": "contacto@empresaejemplo.es",
+  "email": "contacto@example.com",
   "name": "Ana López",
   "company": "Empresa Ejemplo SL",
   "cif": "B12345678",
@@ -4075,7 +4075,7 @@ curl --request PATCH \
 ```json
 {
   "id": 3021,
-  "email": "contacto@empresaejemplo.es",
+  "email": "contacto@example.com",
   "name": "Ana López",
   "company": "Empresa Ejemplo SL",
   "cif": "B12345678",

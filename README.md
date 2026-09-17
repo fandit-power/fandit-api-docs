@@ -8,7 +8,7 @@ Especificación OpenAPI y documentación técnica de la API REST de [FANDIT](htt
 |---|---|
 | [`openapi.yaml`](./openapi.yaml) / [`openapi.json`](./openapi.json) | Especificación OpenAPI 3.0.3 completa: 49 endpoints, parámetros, cuerpos de petición, respuestas y esquemas de autenticación. |
 | [`llms-full.txt`](./llms-full.txt) | Documentación técnica completa en un único archivo continuo (autenticación, paginación, manejo de errores y referencia de cada endpoint con ejemplos reales de petición/respuesta). Pensado para ser leído de un tirón por un LLM o agente, sin depender de navegación entre páginas. |
-| [`swagger-ui.html`](./swagger-ui.html) | Visor interactivo de la API (Swagger UI) con el spec ya incrustado. Se puede abrir directamente haciendo doble clic, sin necesidad de servidor. |
+| [`swagger-ui.html`](./swagger-ui.html) | Visor interactivo de la API (Swagger UI) con el spec ya incrustado. Disponible online en [https://fandit-power.github.io/fandit-api-docs/swagger-ui.html](https://fandit-power.github.io/fandit-api-docs/swagger-ui.html); también se puede abrir directamente haciendo doble clic, sin necesidad de servidor. |
 
 ## Empezando
 
@@ -18,7 +18,7 @@ Especificación OpenAPI y documentación técnica de la API REST de [FANDIT](htt
    - `Authorization: Token TU_API_KEY` — token de usuario, para el bloque de búsqueda y subvenciones (filtros, listado y detalle de convocatorias, concesiones, simuladores, normativa, evaluación, documentación requerida, relacionadas y chatbot).
    - `Authorization: ExpertToken TU_API_KEY` — token de experto, para el resto de endpoints de gestión (usuarios, clientes, contactos, expedientes).
 
-Para explorar la API de forma interactiva, abre `swagger-ui.html` en el navegador. Para una referencia completa en texto (por ejemplo, para dársela como contexto a un LLM), usa `llms-full.txt`.
+Para explorar la API de forma interactiva, abre el [visor Swagger UI online](https://fandit-power.github.io/fandit-api-docs/swagger-ui.html) o `swagger-ui.html` en local. Para una referencia completa en texto (por ejemplo, para dársela como contexto a un LLM), usa `llms-full.txt`.
 
 ## Usar el spec OpenAPI
 
@@ -44,6 +44,7 @@ Para el detalle completo de cada endpoint, parámetros y ejemplos reales, consul
 
 ## Recursos relacionados
 
+- [fandit-power.github.io/fandit-api-docs/swagger-ui.html](https://fandit-power.github.io/fandit-api-docs/swagger-ui.html) — visor interactivo de la API (Swagger UI).
 - [fandit.es](https://fandit.es) — sitio principal.
 - [fandit.es/llms.txt](https://fandit.es/llms.txt) — índice general del sitio para agentes/LLMs.
 - [fandit.es/producto/integraciones-api](https://fandit.es/producto/integraciones-api) — información comercial sobre la API.
