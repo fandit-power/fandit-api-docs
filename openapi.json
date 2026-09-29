@@ -3,7 +3,7 @@
   "info": {
     "title": "API de FANDIT",
     "version": "v2",
-    "description": "Referencia completa de la API REST de FANDIT: subvenciones, concesiones, usuarios, expertos, clientes, contactos y expedientes.\n\n**Autenticación — dos tokens distintos:**\n- `Token de usuario`: para el bloque Buscador/Subvenciones (filtros, búsqueda, detalle, concesiones, simuladores, normativa, evaluación, documentos requeridos, relacionadas, chatbot) y para el login propio de usuario (`/users/login/`) y `/users/current/`.\n- `Token de experto`: para el resto de endpoints de gestión (usuarios, clientes, contactos, expedientes) y para `/experts/current/`.\n\nEl prefijo de la cabecera cambia según el tipo de token: `Authorization: Token TU_API_KEY` para token de usuario, `Authorization: ExpertToken TU_API_KEY` para token de experto. Los endpoints de login/registro (`/users/login/`, `/experts/login`, y los de SSO en `/api/v1/users/partners-brand/`) no requieren esta cabecera — el token se obtiene como resultado del login o viaja como parámetro en el body en el caso de los endpoints SSO.\n\nLa mayoría de endpoints del bloque Subvenciones devuelven 403 tanto si falta token como si el usuario no tiene créditos suficientes en su cuenta: conviene tratarlos como casos distintos en la capa de aplicación.",
+    "description": "Referencia completa de la API REST de FANDIT: subvenciones, concesiones, usuarios, expertos, clientes, contactos y expedientes.\n\n**Autenticación — dos tokens distintos:**\n- `Token de usuario`: para el bloque Buscador/Subvenciones (filtros, búsqueda, detalle, concesiones, normativa, evaluación, documentos requeridos, relacionadas, chatbot) y para el login propio de usuario (`/users/login/`) y `/users/current/`.\n- `Token de experto`: para el resto de endpoints de gestión (usuarios, clientes, contactos, expedientes) y para `/experts/current/`.\n\nEl prefijo de la cabecera cambia según el tipo de token: `Authorization: Token TU_API_KEY` para token de usuario, `Authorization: ExpertToken TU_API_KEY` para token de experto. Los endpoints de login/registro (`/users/login/`, `/experts/login`, y los de SSO en `/api/v1/users/partners-brand/`) no requieren esta cabecera — el token se obtiene como resultado del login o viaja como parámetro en el body en el caso de los endpoints SSO.\n\nLa mayoría de endpoints del bloque Subvenciones devuelven 403 tanto si falta token como si el usuario no tiene créditos suficientes en su cuenta: conviene tratarlos como casos distintos en la capa de aplicación.",
     "contact": {
       "name": "FANDIT",
       "url": "https://www.fandit.es"
@@ -1778,217 +1778,6 @@
                 },
                 "example": {
                   "Response": "Cliente eliminado correctamente."
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Petición inválida (parámetros o formato incorrecto)."
-          },
-          "401": {
-            "description": "Falta la cabecera Authorization o el token no es válido."
-          },
-          "403": {
-            "description": "No autorizado (token del tipo incorrecto, o sin créditos suficientes en endpoints que consumen créditos)."
-          },
-          "404": {
-            "description": "Recurso no encontrado."
-          }
-        }
-      }
-    },
-    "/api/v2/crm/fund-dashboard-data/": {
-      "get": {
-        "tags": [
-          "Subvenciones"
-        ],
-        "summary": "Dashboard de subvenciones agregadas",
-        "operationId": "v2_crm_fund_dashboard_data",
-        "description": "Petición para obtener estadísticas agregadas de convocatorias activas (conteo e importe total) agrupadas por distintas dimensiones (comunidades, provincias, actividades, tipos de solicitante, tipos de convocatoria, acciones, orígenes y ámbito territorial) y por ventana temporal (día, semana, mes), dentro de un rango de fechas de alta de la convocatoria. Pensado para alimentar paneles/dashboards internos, no para el buscador de convocatorias en sí (para eso usa GET /funds/). La respuesta no está paginada.",
-        "security": [
-          {
-            "UserTokenAuth": []
-          },
-          {
-            "ExpertTokenAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "requestData",
-            "in": "query",
-            "required": true,
-            "description": "Objeto de filtros serializado como JSON. Debe incluir como mínimo start_date y end_date.",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "start_date": {
-                  "type": "string",
-                  "format": "date",
-                  "description": "Fecha de alta de la convocatoria, inicio de rango. Formato YYYY-MM-DD."
-                },
-                "end_date": {
-                  "type": "string",
-                  "format": "date",
-                  "description": "Fecha de alta de la convocatoria, fin de rango. Formato YYYY-MM-DD."
-                },
-                "communities": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de comunidad autónoma."
-                },
-                "provinces": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de provincia."
-                },
-                "applicants_v2": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de tipo de solicitante (mismo espacio de ids que `applicants` en /data-filters/)."
-                },
-                "activities_v2": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de actividad/sector."
-                },
-                "actions_v2": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de acción/línea de ayuda."
-                },
-                "types": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de tipo de convocatoria."
-                },
-                "region_types": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de ámbito territorial."
-                },
-                "origins": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de origen de fondos."
-                },
-                "order_by": {
-                  "type": "string",
-                  "description": "Campo de ordenación de los resultados agrupados (por defecto `count`)."
-                }
-              },
-              "required": [
-                "start_date",
-                "end_date"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Respuesta correcta",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "results": {
-                      "type": "object",
-                      "description": "Objeto con una clave por dimensión (communities, provinces, activities_v2, applicant_types_v2, types, actions_v2, origins), cada una con la forma {months, weeks, days, globals}, más los agregados globales total, total_amount, values y region_types."
-                    }
-                  }
-                },
-                "example": {
-                  "results": {
-                    "communities": {
-                      "months": [
-                        {
-                          "label": "2026-01-01 - 2026-01-31",
-                          "count": 42,
-                          "total": 15000000
-                        }
-                      ],
-                      "weeks": [],
-                      "days": [],
-                      "globals": [
-                        {
-                          "communities": 13,
-                          "name": "Comunidad de Madrid",
-                          "count": 42,
-                          "total": 15000000
-                        }
-                      ]
-                    },
-                    "provinces": {
-                      "months": [],
-                      "weeks": [],
-                      "days": [],
-                      "globals": []
-                    },
-                    "activities_v2": {
-                      "months": [],
-                      "weeks": [],
-                      "days": [],
-                      "globals": []
-                    },
-                    "applicant_types_v2": {
-                      "months": [],
-                      "weeks": [],
-                      "days": [],
-                      "globals": []
-                    },
-                    "types": {
-                      "months": [],
-                      "weeks": [],
-                      "days": [],
-                      "globals": []
-                    },
-                    "actions_v2": {
-                      "months": [],
-                      "weeks": [],
-                      "days": [],
-                      "globals": []
-                    },
-                    "origins": {
-                      "months": [],
-                      "weeks": [],
-                      "days": [],
-                      "globals": []
-                    },
-                    "total": 42,
-                    "total_amount": {
-                      "total_amount": 15000000
-                    },
-                    "values": {
-                      "days": [],
-                      "weeks": [],
-                      "months": []
-                    },
-                    "region_types": [
-                      {
-                        "region_type": 1,
-                        "count": 42,
-                        "total": 15000000,
-                        "name": "Nacional"
-                      }
-                    ]
-                  }
                 }
               }
             }
@@ -4797,6 +4586,113 @@
         }
       }
     },
+    "/api/v2/fund-minimis-by-nif/": {
+      "post": {
+        "tags": [
+          "Subvenciones"
+        ],
+        "summary": "Ayudas de mínimis por NIF",
+        "operationId": "v2_funds_minimis_by_nif",
+        "description": "Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "nif"
+                ],
+                "properties": {
+                  "nif": {
+                    "type": "string",
+                    "description": "NIF o CIF del beneficiario a consultar."
+                  }
+                }
+              },
+              "example": {
+                "nif": "B12345678"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Array plano con las concesiones de mínimis del NIF.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "bdns": {
+                        "type": "string",
+                        "description": "Código BDNS de la convocatoria."
+                      },
+                      "organs": {
+                        "type": "string",
+                        "description": "Órgano concedente."
+                      },
+                      "minimis": {
+                        "type": "string",
+                        "description": "Reglamento de mínimis aplicado."
+                      },
+                      "concession_date": {
+                        "type": "string",
+                        "format": "date"
+                      },
+                      "activity": {
+                        "type": "string",
+                        "description": "Actividad económica del beneficiario."
+                      },
+                      "concession_amount": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                },
+                "example": [
+                  {
+                    "bdns": "787822",
+                    "organs": "ESTADO MINISTERIO DE INDUSTRIA Y TURISMO FUNDACIÓN EOI, F.S.P.",
+                    "minimis": "REG (UE) 2023/2831 de minimis, General",
+                    "concession_date": "2025-05-12",
+                    "activity": "62 - Programación, consultoría y otras actividades relacionadas con la informática",
+                    "concession_amount": 9500
+                  },
+                  {
+                    "bdns": "748908",
+                    "organs": "LOCAL MADRID ÁREA DE GOBIERNO DE ECONOMÍA, INNOVACIÓN Y HACIENDA",
+                    "minimis": "REG (UE) 2023/2831 de minimis, General",
+                    "concession_date": "2024-12-10",
+                    "activity": "H - TRANSPORTE Y ALMACENAMIENTO; T - OTROS SERVICIOS",
+                    "concession_amount": 50000
+                  }
+                ]
+              }
+            }
+          },
+          "400": {
+            "description": "Falta el campo `nif` o no tiene un formato válido."
+          },
+          "401": {
+            "description": "Falta la cabecera Authorization o el token no es válido."
+          },
+          "403": {
+            "description": "No autorizado (token del tipo incorrecto, o sin créditos suficientes en endpoints que consumen créditos)."
+          },
+          "404": {
+            "description": "No hay concesiones de mínimis para ese NIF."
+          }
+        }
+      }
+    },
     "/api/v2/funds/": {
       "get": {
         "tags": [
@@ -6059,193 +5955,6 @@
           },
           "403": {
             "description": "No autorizado (token del tipo incorrecto, o sin créditos suficientes en endpoints que consumen créditos)."
-          }
-        }
-      }
-    },
-    "/api/v2/funds/opportunities-by-cif/": {
-      "post": {
-        "tags": [
-          "Subvenciones"
-        ],
-        "summary": "Simulador por CIF",
-        "operationId": "v2_funds_simulator_for_companies",
-        "description": "Calcula hasta 20 oportunidades de subvención a partir del NIF/CIF y CNAE de una empresa: infiere el tipo de solicitante según el NIF y cruza con las acciones asociadas al CNAE. Para perfil genérico sin CIF usar el simulador por perfil. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
-        "security": [
-          {
-            "UserTokenAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "province",
-                  "cnae",
-                  "nif"
-                ],
-                "properties": {
-                  "province": {
-                    "type": "integer",
-                    "description": "Provincia de la empresa."
-                  },
-                  "cnae": {
-                    "type": "string",
-                    "description": "Código CNAE 2009 de la empresa."
-                  },
-                  "nif": {
-                    "type": "string",
-                    "description": "CIF/NIF de la empresa."
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Array plano, máximo 20 resultados.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer"
-                      },
-                      "slug": {
-                        "type": "string"
-                      },
-                      "formatted_title": {
-                        "type": "string"
-                      },
-                      "status_text": {
-                        "type": "string"
-                      },
-                      "total_amount": {
-                        "type": "number"
-                      },
-                      "scope": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Faltan campos o el CNAE no es válido."
-          },
-          "401": {
-            "description": "Falta la cabecera Authorization o el token no es válido."
-          },
-          "403": {
-            "description": "No autorizado (token del tipo incorrecto, o sin créditos suficientes en endpoints que consumen créditos)."
-          },
-          "404": {
-            "description": "Recurso no encontrado."
-          }
-        }
-      }
-    },
-    "/api/v2/funds/opportunities-by-profile/": {
-      "post": {
-        "tags": [
-          "Subvenciones"
-        ],
-        "summary": "Simulador por perfil",
-        "operationId": "v2_funds_simulator_by_profile",
-        "description": "Igual que el simulador por CIF, pero recibiendo el perfil directamente en vez de derivarlo del NIF. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
-        "security": [
-          {
-            "UserTokenAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "province",
-                  "applicants_v2",
-                  "actions_v2"
-                ],
-                "properties": {
-                  "province": {
-                    "description": "Provincia (int) o array de provincias."
-                  },
-                  "applicants_v2": {
-                    "type": "array",
-                    "items": {
-                      "type": "integer"
-                    },
-                    "description": "IDs de tipo de solicitante. No puede ir vacío."
-                  },
-                  "actions_v2": {
-                    "type": "array",
-                    "items": {
-                      "type": "integer"
-                    },
-                    "description": "IDs de acción/línea de ayuda. No puede ir vacío."
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Array plano, máximo 20 resultados (mismo formato que el simulador por CIF).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer"
-                      },
-                      "slug": {
-                        "type": "string"
-                      },
-                      "formatted_title": {
-                        "type": "string"
-                      },
-                      "status_text": {
-                        "type": "string"
-                      },
-                      "total_amount": {
-                        "type": "number"
-                      },
-                      "scope": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Faltan campos obligatorios o vienen vacíos."
-          },
-          "401": {
-            "description": "Falta la cabecera Authorization o el token no es válido."
-          },
-          "403": {
-            "description": "No autorizado (token del tipo incorrecto, o sin créditos suficientes en endpoints que consumen créditos)."
-          },
-          "404": {
-            "description": "Recurso no encontrado."
           }
         }
       }
@@ -8290,76 +7999,6 @@
                       2
                     ]
                   }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Petición inválida (parámetros o formato incorrecto)."
-          },
-          "401": {
-            "description": "Falta la cabecera Authorization o el token no es válido."
-          },
-          "403": {
-            "description": "No autorizado (token del tipo incorrecto, o sin créditos suficientes en endpoints que consumen créditos)."
-          },
-          "404": {
-            "description": "Recurso no encontrado."
-          }
-        }
-      }
-    },
-    "/api/v2/users/usage-statistics/": {
-      "get": {
-        "tags": [
-          "Usuarios"
-        ],
-        "summary": "Estadísticas de uso",
-        "operationId": "v2_users_usage_statistics",
-        "description": "Petición para obtener el consumo de créditos del usuario o experto autenticado en el mes en curso.",
-        "security": [
-          {
-            "UserTokenAuth": []
-          },
-          {
-            "ExpertTokenAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Respuesta correcta",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "user_id": {
-                      "type": "integer"
-                    },
-                    "user_email": {
-                      "type": "string"
-                    },
-                    "monthly_used_credits": {
-                      "type": "integer"
-                    },
-                    "max_credits": {
-                      "type": "integer"
-                    },
-                    "credits_bag": {
-                      "type": "integer"
-                    },
-                    "credits_reset_date": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "example": {
-                  "user_id": 10482,
-                  "user_email": "laura.gomez@example.com",
-                  "monthly_used_credits": 34,
-                  "max_credits": 100,
-                  "credits_bag": 10,
-                  "credits_reset_date": "2026-09-01"
                 }
               }
             }

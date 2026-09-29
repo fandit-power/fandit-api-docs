@@ -80,7 +80,7 @@ FANDIT expone una API REST (`https://api.fandit.es`) para integrar subvenciones,
 - [Autenticación (SSO)](https://fandit.es/api/sso/introduction): inicio de sesión único para usuarios y expertos; alta de usuarios (`sso/users-management/registration`), cambio de contraseña, baja y validación de email.
 - [Autenticación v2](https://fandit.es/api/v2/auth/log-in): login de usuarios y de expertos, y consulta de la sesión actual.
 - [Usuarios](https://fandit.es/api/v2/users/list): alta, consulta, actualización y baja de usuarios.
-- [Subvenciones (Funds)](https://fandit.es/api/v2/funds/list): búsqueda y detalle de convocatorias, concesiones y beneficiarios, simuladores de elegibilidad por CIF y por perfil, normativa, criterios de evaluación, documentos requeridos, convocatorias relacionadas y chatbot de una convocatoria.
+- [Subvenciones (Funds)](https://fandit.es/api/v2/funds/list): búsqueda y detalle de convocatorias, concesiones y beneficiarios, ayudas de mínimis por NIF, normativa, criterios de evaluación, documentos requeridos, convocatorias relacionadas y chatbot de una convocatoria.
 - [Workflows](https://fandit.es/api/v2/workflow/list): ciclo de vida de los expedientes de subvención, plantillas, asignación a expertos, importación y cambios masivos de estado.
 - [Clientes (Customers)](https://fandit.es/api/v2/customers/list): gestión y compartición de clientes para asesorías/consultoras.
 - [Contactos](https://fandit.es/api/v2/contacts/list): gestión de contactos asociados a clientes.

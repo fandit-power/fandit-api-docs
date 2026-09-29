@@ -1,6 +1,6 @@
 # Documentación técnica de la API de FANDIT (referencia única)
 
-Este documento reúne en un solo archivo continuo toda la documentación técnica de la API REST v2 de FANDIT (y los endpoints legacy v1 de Single Sign-On), pensado para ser leído de un tirón por un LLM sin depender de navegación entre páginas. Cubre: autenticación, manejo de errores, paginación, y la referencia completa de los 49 endpoints agrupados por bloque funcional (Filtros, Autenticación, Usuarios, Subvenciones, Expedientes, Clientes, Contactos, SSO legacy). No cubre otras áreas del producto FANDIT (Buscador web, Asistente IA, Alertas, Automatizaciones, etc.) más allá de lo que se expone vía esta API.
+Este documento reúne en un solo archivo continuo toda la documentación técnica de la API REST v2 de FANDIT (y los endpoints legacy v1 de Single Sign-On), pensado para ser leído de un tirón por un LLM sin depender de navegación entre páginas. Cubre: autenticación, manejo de errores, paginación, y la referencia completa de los 46 endpoints agrupados por bloque funcional (Filtros, Autenticación, Usuarios, Subvenciones, Expedientes, Clientes, Contactos, SSO legacy). No cubre otras áreas del producto FANDIT (Buscador web, Asistente IA, Alertas, Automatizaciones, etc.) más allá de lo que se expone vía esta API.
 
 ## URLs base
 
@@ -18,7 +18,7 @@ Authorization: Token TU_API_KEY          (token de usuario)
 Authorization: ExpertToken TU_API_KEY    (token de experto)
 ```
 
-- **Token de usuario** (prefijo `Token`): necesario para el bloque Buscador/Subvenciones completo (filtros generales, búsqueda y detalle de convocatorias, concesiones, simuladores de oportunidades, normativa, evaluación, documentación requerida, convocatorias relacionadas y chatbot) y para `GET /api/v2/users/current/`. Se obtiene mediante `POST /api/v2/users/login/` (email + contraseña).
+- **Token de usuario** (prefijo `Token`): necesario para el bloque Buscador/Subvenciones completo (filtros generales, búsqueda y detalle de convocatorias, concesiones, normativa, evaluación, documentación requerida, convocatorias relacionadas y chatbot) y para `GET /api/v2/users/current/`. Se obtiene mediante `POST /api/v2/users/login/` (email + contraseña).
 - **Token de experto** (prefijo `ExpertToken`): necesario para el resto de endpoints de gestión — usuarios (alta/baja/edición), clientes, contactos y expedientes — y para `GET /api/v2/experts/current/`. Se obtiene mediante `POST /api/v2/experts/login` (email + contraseña).
 
 Los propios endpoints de login (`/users/login/`, `/experts/login`) y los endpoints legacy de SSO en `/api/v1/users/partners-brand/` **no** llevan cabecera `Authorization`: en el caso de login porque es lo que se está solicitando, y en el caso de SSO porque el token (o un OTP) viaja como parámetro dentro del body de la propia petición, no como cabecera.
@@ -1535,47 +1535,6 @@ curl --request PATCH \
 ---
 
 
-#### Estadísticas de uso — `GET /api/v2/users/usage-statistics/`
-
-**Autenticación:** Token de usuario o token de experto
-
-
-Petición para obtener el consumo de créditos del usuario o experto autenticado en el mes en curso: créditos usados, límite mensual, bolsa de créditos extra disponible y fecha del próximo reinicio.
-
-
-**Ejemplo de petición:**
-
-
-```bash
-curl --request GET \
-  --url 'https://api.fandit.es/api/v2/users/usage-statistics/' \
-  --header 'Authorization: Token TU_API_KEY'
-```
-
-
-**Ejemplo de respuesta:**
-
-
-```json
-{
-  "user_id": 10482,
-  "user_email": "laura.gomez@example.com",
-  "monthly_used_credits": 34,
-  "max_credits": 100,
-  "credits_bag": 10,
-  "credits_reset_date": "2026-09-01"
-}
-```
-
-
-**Notas de errores específicas de este endpoint:**
-
-
-
-
----
-
-
 ### Subvenciones
 
 #### Detalles de una subvención — `GET /api/v2/fund-details/{identifier}/`
@@ -1633,6 +1592,69 @@ curl --request GET \
 
 
 - `404`: No existe o no está activa (ver nota en la descripción sobre convocatorias históricas).
+
+
+
+---
+
+
+#### Ayudas de mínimis por NIF — `POST /api/v2/fund-minimis-by-nif/`
+
+**Autenticación:** Token de usuario
+
+
+Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
+
+
+**Cuerpo de la petición (JSON):**
+
+
+| Campo | Tipo | Obligatorio | Descripción |
+|---|---|---|---|
+| `nif` | string | Sí | NIF o CIF del beneficiario a consultar. |
+
+
+**Ejemplo de petición:**
+
+
+```bash
+curl --request POST \
+  --url 'https://api.fandit.es/api/v2/fund-minimis-by-nif/' \
+  --data '{ "nif": "B12345678" }' \
+  --header 'Authorization: Token TU_API_KEY'
+```
+
+
+**Ejemplo de respuesta:**
+
+
+```json
+[
+  {
+    "bdns": "787822",
+    "organs": "ESTADO MINISTERIO DE INDUSTRIA Y TURISMO FUNDACIÓN EOI, F.S.P.",
+    "minimis": "REG (UE) 2023/2831 de minimis, General",
+    "concession_date": "2025-05-12",
+    "activity": "62 - Programación, consultoría y otras actividades relacionadas con la informática",
+    "concession_amount": 9500.0
+  },
+  {
+    "bdns": "748908",
+    "organs": "LOCAL MADRID ÁREA DE GOBIERNO DE ECONOMÍA, INNOVACIÓN Y HACIENDA",
+    "minimis": "REG (UE) 2023/2831 de minimis, General",
+    "concession_date": "2024-12-10",
+    "activity": "H - TRANSPORTE Y ALMACENAMIENTO; T - OTROS SERVICIOS",
+    "concession_amount": 50000.0
+  }
+]
+```
+
+
+**Notas de errores específicas de este endpoint:**
+
+
+- `400`: Falta el campo `nif` o no tiene un formato válido.
+- `404`: No hay concesiones de mínimis para ese NIF.
 
 
 
@@ -2296,251 +2318,6 @@ curl --request GET \
 
 
 - `404`: Convocatoria inexistente.
-
-
-
----
-
-
-#### Simulador por CIF — `POST /api/v2/funds/opportunities-by-cif/`
-
-**Autenticación:** Token de usuario
-
-
-Calcula hasta 20 oportunidades de subvención a partir del NIF/CIF y CNAE de una empresa: infiere el tipo de solicitante según el NIF y cruza con las acciones asociadas al CNAE. Para perfil genérico sin CIF usar el simulador por perfil. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
-
-
-**Cuerpo de la petición (JSON):**
-
-
-| Campo | Tipo | Obligatorio | Descripción |
-|---|---|---|---|
-| `province` | integer | Sí | Provincia de la empresa. |
-| `cnae` | string | Sí | Código CNAE 2009 de la empresa. |
-| `nif` | string | Sí | CIF/NIF de la empresa. |
-
-
-**Ejemplo de petición:**
-
-
-```bash
-curl --request POST \
-  --url 'https://api.fandit.es/api/v2/funds/opportunities-by-cif/' \
-  --data '{ "province": 42, "cnae": "0111", "nif": "B88888888" }' \
-  --header 'Authorization: Token TU_API_KEY'
-```
-
-
-**Ejemplo de respuesta:**
-
-
-```json
-[
-  {
-    "id": 1028474,
-    "slug": "subvencion-programa-de-empleo-y-formacion-2026",
-    "formatted_title": "Subvención Programa de empleo y formación",
-    "status_text": "Apertura el 25/07/2026 y cierre el 11/09/2026",
-    "total_amount": 108106379.11,
-    "scope": "Andalucía"
-  },
-  {
-    "id": 998414,
-    "slug": "convocatoria-de-ayudas-para-solicitantes-que-no-son-grupos-de-desarrollo-rural-2026",
-    "formatted_title": "Convocatoria de ayudas para solicitantes que no son Grupos de Desarrollo Rural 2026.  (Intervención 7119.2)",
-    "status_text": "Apertura el 23/04/2026 y cierre el 31/12/2028",
-    "total_amount": 97589590.75,
-    "scope": "Andalucía"
-  }
-]
-```
-
-
-**Notas de errores específicas de este endpoint:**
-
-
-- `400`: Faltan campos o el CNAE no es válido.
-
-
-
----
-
-
-#### Simulador por perfil — `POST /api/v2/funds/opportunities-by-profile/`
-
-**Autenticación:** Token de usuario
-
-
-Igual que el simulador por CIF, pero recibiendo el perfil directamente en vez de derivarlo del NIF. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
-
-
-**Cuerpo de la petición (JSON):**
-
-
-| Campo | Tipo | Obligatorio | Descripción |
-|---|---|---|---|
-| `province` | - | Sí | Provincia (int) o array de provincias. |
-| `applicants_v2` | array[integer] | Sí | IDs de tipo de solicitante. No puede ir vacío. |
-| `actions_v2` | array[integer] | Sí | IDs de acción/línea de ayuda. No puede ir vacío. |
-
-
-**Ejemplo de petición:**
-
-
-```bash
-curl --request POST \
-  --url 'https://api.fandit.es/api/v2/funds/opportunities-by-profile/' \
-  --header 'Authorization: Token TU_API_KEY' \
-  --data '{"province": 42, "applicants_v2": [1,3,4,5,7,2,8,6], "actions_v2": [67,30,41,32,38,27,46,47,28,39,31,68,49,42,54,50,57,69,44,33,51,52,61,34,62,40,63,58,71,55,35,36,45,37,66,56,48,53,70,59,43,64,60,65,29]}'
-```
-
-
-**Ejemplo de respuesta:**
-
-
-```json
-[
-  {
-    "id": 1028474,
-    "slug": "subvencion-programa-de-empleo-y-formacion-2026",
-    "formatted_title": "Subvención Programa de empleo y formación",
-    "status_text": "Apertura el 25/07/2026 y cierre el 11/09/2026",
-    "total_amount": 108106379.11,
-    "scope": "Andalucía"
-  },
-  {
-    "id": 998414,
-    "slug": "convocatoria-de-ayudas-para-solicitantes-que-no-son-grupos-de-desarrollo-rural-2026",
-    "formatted_title": "Convocatoria de ayudas para solicitantes que no son Grupos de Desarrollo Rural 2026.  (Intervención 7119.2)",
-    "status_text": "Apertura el 23/04/2026 y cierre el 31/12/2028",
-    "total_amount": 97589590.75,
-    "scope": "Andalucía"
-  },
-  {
-    "id": 1033743,
-    "slug": "ayudas-del-plan-de-emergencias-ante-el-riesgo-de-inundaciones-en-andalucia-peri-a-entidades-locales-especialmente-afectadas-por-fenomenos-naturales-adversos",
-    "formatted_title": "Ayudas del Plan de Emergencias ante el Riesgo de Inundaciones en Andalucia (PERI) a entidades locales especialmente afectadas por fenómenos naturales adversos.",
-    "status_text": "Abierta hasta agotar fondos",
-    "total_amount": 35000000,
-    "scope": "Andalucía"
-  }
-]
-```
-
-
-**Notas de errores específicas de este endpoint:**
-
-
-- `400`: Faltan campos obligatorios o vienen vacíos.
-
-
-
----
-
-
-#### Dashboard de subvenciones agregadas — `GET /api/v2/crm/fund-dashboard-data/`
-
-**Autenticación:** Token de usuario o token de experto
-
-
-Petición para obtener estadísticas agregadas de convocatorias activas (conteo e importe total) agrupadas por distintas dimensiones (comunidades, provincias, actividades, tipos de solicitante, tipos de convocatoria, acciones, orígenes y ámbito territorial) y por ventana temporal (día, semana, mes), dentro de un rango de fechas de alta de la convocatoria. Pensado para alimentar paneles/dashboards internos, no para el buscador de convocatorias en sí (para eso usa `GET /funds/`).
-
-
-**Parámetros:**
-
-
-| Nombre | Ubicación | Tipo | Obligatorio | Descripción |
-|---|---|---|---|---|
-| `requestData` | query | object | Sí | Objeto de filtros serializado como JSON. Debe incluir como mínimo `start_date` y `end_date`. |
-
-Campos de `requestData`:
-
-| Campo | Tipo | Obligatorio | Descripción |
-|---|---|---|---|
-| `start_date` | string | Sí | Fecha de alta de la convocatoria, inicio de rango. Formato YYYY-MM-DD. |
-| `end_date` | string | Sí | Fecha de alta de la convocatoria, fin de rango. Formato YYYY-MM-DD. |
-| `communities` | array[integer] | No | IDs de comunidad autónoma. |
-| `provinces` | array[integer] | No | IDs de provincia. |
-| `applicants_v2` | array[integer] | No | IDs de tipo de solicitante (mismo espacio de ids que `applicants` en /data-filters/). |
-| `activities_v2` | array[integer] | No | IDs de actividad/sector. |
-| `actions_v2` | array[integer] | No | IDs de acción/línea de ayuda. |
-| `types` | array[integer] | No | IDs de tipo de convocatoria. |
-| `region_types` | array[integer] | No | IDs de ámbito territorial. |
-| `origins` | array[integer] | No | IDs de origen de fondos. |
-| `order_by` | string | No | Campo de ordenación de los resultados agrupados (por defecto `count`). |
-
-
-**Ejemplo de petición:**
-
-
-```bash
-curl --request GET \
-  --url 'https://api.fandit.es/api/v2/crm/fund-dashboard-data/' \
-  --get \
-  --data-urlencode 'requestData={"start_date":"2026-01-01","end_date":"2026-06-30","communities":[13]}' \
-  --header 'Authorization: Token TU_API_KEY'
-```
-
-
-**Ejemplo de respuesta:**
-
-
-```json
-{
-  "results": {
-    "communities": {
-      "months": [
-        {
-          "label": "2026-01-01 - 2026-01-31",
-          "count": 42,
-          "total": 15000000
-        }
-      ],
-      "weeks": [],
-      "days": [],
-      "globals": [
-        {
-          "communities": 13,
-          "name": "Comunidad de Madrid",
-          "count": 42,
-          "total": 15000000
-        }
-      ]
-    },
-    "provinces": { "months": [], "weeks": [], "days": [], "globals": [] },
-    "activities_v2": { "months": [], "weeks": [], "days": [], "globals": [] },
-    "applicant_types_v2": { "months": [], "weeks": [], "days": [], "globals": [] },
-    "types": { "months": [], "weeks": [], "days": [], "globals": [] },
-    "actions_v2": { "months": [], "weeks": [], "days": [], "globals": [] },
-    "origins": { "months": [], "weeks": [], "days": [], "globals": [] },
-    "total": 42,
-    "total_amount": {
-      "total_amount": 15000000
-    },
-    "values": {
-      "days": [],
-      "weeks": [],
-      "months": []
-    },
-    "region_types": [
-      {
-        "region_type": 1,
-        "count": 42,
-        "total": 15000000,
-        "name": "Nacional"
-      }
-    ]
-  }
-}
-```
-
-La respuesta no está paginada (se ignora `pagination_class` a nivel de implementación) y desglosa cada dimensión (`communities`, `provinces`, `activities_v2`, `applicant_types_v2`, `types`, `actions_v2`, `origins`) con la misma forma: `months`/`weeks`/`days` (series temporales) y `globals` (totales por valor de la dimensión). Los campos `total`, `total_amount`, `values` y `region_types` son agregados globales del conjunto completo de resultados filtrado.
-
-
-**Notas de errores específicas de este endpoint:**
-
-
-- `400`: Falta `start_date` o `end_date`, o el rango de fechas no es válido.
 
 
 
@@ -4127,8 +3904,7 @@ curl --request PATCH \
 | Ver convocatorias ya resueltas / con concesiones publicadas | `GET /funds/concessions/` |
 | Ver qué ayudas ha recibido una empresa concreta (por CIF) | `GET /funds/concessions/beneficiaries-by-cif/` con `nif` |
 | Ver quién recibió una convocatoria concreta | `GET /funds/concessions/beneficiaries/` con `fund_id`/`fund_slug` |
-| Saber a qué puede optar una empresa con CIF/CNAE conocidos | `POST /funds/opportunities-by-cif/` |
-| Saber a qué puede optar un perfil genérico sin CIF | `POST /funds/opportunities-by-profile/` |
+| Saber cuánto ha recibido una empresa en régimen de mínimis | `POST /fund-minimis-by-nif/` con `nif` |
 | Ver la normativa/documentación legal de una convocatoria | `GET /funds/fund-normative/{id}/` |
 | Saber cómo se evalúan las solicitudes | `GET /funds/fund-evaluation/{id}/` |
 | Ver ediciones anteriores de la misma ayuda | `GET /funds/fund-related/{id}/` |
