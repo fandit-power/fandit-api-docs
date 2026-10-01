@@ -1804,7 +1804,7 @@
         ],
         "summary": "Filtros generales",
         "operationId": "data_filters",
-        "description": "Devuelve el catálogo completo de valores de referencia usados por el resto de endpoints: tipos de solicitante, actividades/sectores, comunidades autónomas y provincias (con provinces anidadas), líneas de crédito, orígenes de fondos, tipos de ayuda, CNAEs, grupos de acción, etc. Cada elemento trae su id, que es el que hay que usar como filtro en los demás endpoints. Los ids devueltos aquí bajo applicants, activities y actions son compatibles con los campos applicants_v2/activities_v2/actions_v2 usados en /funds/ y /funds/concessions/ (mismo espacio de ids, a pesar de la diferencia de nombre). No consume créditos, solo requiere token de usuario.",
+        "description": "Devuelve el catálogo completo de valores de referencia usados por el resto de endpoints: tipos de solicitante, actividades/sectores, comunidades autónomas y provincias (con provinces anidadas), líneas de crédito, orígenes de fondos, tipos de ayuda, CNAEs, grupos de acción, etc. Cada elemento trae su id, que es el que hay que usar como filtro en los demás endpoints. Los ids devueltos aquí bajo applicants, activities y actions son compatibles con los campos applicants_v2/activities_v2/actions_v2 usados en /funds/ (mismo espacio de ids, a pesar de la diferencia de nombre). Las actividades (activities) ya no incluyen su lista de CNAE. El catálogo de CNAE sigue disponible en la lista de primer nivel cnaes, pero está previsto eliminarla en una próxima versión. No consume créditos, solo requiere token de usuario.",
         "security": [
           {
             "UserTokenAuth": []
@@ -1900,7 +1900,9 @@
                             "type": "string"
                           }
                         }
-                      }
+                      },
+                      "deprecated": true,
+                      "description": "Catálogo de CNAE. Obsoleto: está previsto eliminarlo en una próxima versión."
                     },
                     "communities": {
                       "type": "array",
@@ -4490,7 +4492,7 @@
         ],
         "summary": "Detalles de una subvención",
         "operationId": "v2_funds_detail",
-        "description": "Detalle completo de una convocatoria activa. Acepta como identificador el id numérico o el slug de la convocatoria (el slug se normaliza a minúsculas). Este endpoint solo cubre convocatorias activas: una convocatoria histórica o ya resuelta devuelve 404 aunque el identificador sea válido; para consultar esas, usa /funds/concessions/ o /funds/concessions/beneficiaries*. Para preguntas sobre cómo aumentar las probabilidades de éxito de una solicitud, combina este endpoint con fund-evaluation y fund-required-documents. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
+        "description": "Detalle completo de una convocatoria activa. Acepta como identificador el id numérico o el slug de la convocatoria (el slug se normaliza a minúsculas). Este endpoint solo cubre convocatorias activas: una convocatoria histórica o ya resuelta devuelve 404 aunque el identificador sea válido; para consultar sus beneficiarios, usa /funds/concessions/beneficiaries/. La respuesta incluye el número e importe total de concesiones (concessions, concessions_amount), si tiene convocatorias relacionadas (related_funds), el origen de los datos (source) y la URL pública de la convocatoria (url), que usa el dominio de la marca con la que se autentica la llamada: usa siempre ese valor en lugar de construirla. Para preguntas sobre cómo aumentar las probabilidades de éxito de una solicitud, combina este endpoint con fund-evaluation y fund-required-documents. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
         "security": [
           {
             "UserTokenAuth": []
@@ -4565,6 +4567,33 @@
                     },
                     "info_extra": {
                       "type": "string"
+                    },
+                    "concessions": {
+                      "type": "integer",
+                      "description": "Número de concesiones publicadas de la convocatoria."
+                    },
+                    "concessions_amount": {
+                      "type": "number",
+                      "description": "Importe total concedido."
+                    },
+                    "related_funds": {
+                      "type": "boolean",
+                      "description": "Si la convocatoria tiene convocatorias relacionadas (consultables en /funds/fund-related/{id}/)."
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "InfoSubvenciones",
+                        "Sede electrónica",
+                        "Fandit Manual",
+                        "Boletines"
+                      ],
+                      "description": "Origen de los datos de la convocatoria."
+                    },
+                    "url": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "URL pública de la convocatoria, en el dominio de la marca con la que se autentica la llamada. Usa siempre este valor en lugar de construir la URL."
                     }
                   }
                 }
@@ -4593,7 +4622,7 @@
         ],
         "summary": "Ayudas de mínimis por NIF",
         "operationId": "v2_funds_minimis_by_nif",
-        "description": "Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
+        "description": "Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Si el NIF no tiene concesiones devuelve 200 con un array vacío. Si falta el NIF devuelve 400 con el error «El NIF es requerido», y si no es válido, 400 con el mensaje de validación. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
         "security": [
           {
             "UserTokenAuth": []
@@ -4623,7 +4652,7 @@
         },
         "responses": {
           "200": {
-            "description": "Array plano con las concesiones de mínimis del NIF.",
+            "description": "Array plano con las concesiones de mínimis del NIF (vacío si no tiene ninguna).",
             "content": {
               "application/json": {
                 "schema": {
@@ -4633,26 +4662,32 @@
                     "properties": {
                       "bdns": {
                         "type": "string",
-                        "description": "Código BDNS de la convocatoria."
+                        "description": "Código BDNS de la convocatoria.",
+                        "nullable": true
                       },
                       "organs": {
                         "type": "string",
-                        "description": "Órgano concedente."
+                        "description": "Órgano concedente.",
+                        "nullable": true
                       },
                       "minimis": {
                         "type": "string",
-                        "description": "Reglamento de mínimis aplicado."
+                        "description": "Reglamento de mínimis aplicado.",
+                        "nullable": true
                       },
                       "concession_date": {
                         "type": "string",
-                        "format": "date"
+                        "format": "date",
+                        "nullable": true
                       },
                       "activity": {
                         "type": "string",
-                        "description": "Actividad económica del beneficiario."
+                        "description": "Actividad económica del beneficiario.",
+                        "nullable": true
                       },
                       "concession_amount": {
-                        "type": "number"
+                        "type": "number",
+                        "nullable": true
                       }
                     }
                   }
@@ -4679,16 +4714,13 @@
             }
           },
           "400": {
-            "description": "Falta el campo `nif` o no tiene un formato válido."
+            "description": "Falta el campo nif («El NIF es requerido») o no tiene un formato válido (mensaje de validación)."
           },
           "401": {
             "description": "Falta la cabecera Authorization o el token no es válido."
           },
           "403": {
             "description": "No autorizado (token del tipo incorrecto, o sin créditos suficientes en endpoints que consumen créditos)."
-          },
-          "404": {
-            "description": "No hay concesiones de mínimis para ese NIF."
           }
         }
       }
@@ -4700,7 +4732,7 @@
         ],
         "summary": "Listado de subvenciones",
         "operationId": "v2_funds_list",
-        "description": "Listado de convocatorias activas (active=True) con un amplio sistema de filtros, incluyendo búsqueda semántica vectorizada (search_by_vectorized_text) que puede autocompletar filtros. Si se necesita el total de resultados y la respuesta no cabe en una página, seguir pidiendo páginas siguientes con el parámetro page hasta agotar los resultados (usar count). Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
+        "description": "Listado de convocatorias activas (active=True) con un amplio sistema de filtros, incluyendo búsqueda semántica vectorizada (search_by_vectorized_text) que puede autocompletar filtros. Si se necesita el total de resultados y la respuesta no cabe en una página, seguir pidiendo páginas siguientes con el parámetro page hasta agotar los resultados (usar count). Para obtener solo convocatorias con concesiones publicadas (lo que antes devolvía /funds/concessions/, ya eliminado) envía with_concessions: true en requestData. Cada resultado incluye el número e importe de concesiones (concessions, concessions_amount), si tiene convocatorias relacionadas (related_funds), el origen de los datos (source) y la URL pública de la convocatoria (url) en el dominio de tu marca; usa siempre ese valor en lugar de construirla. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
         "security": [
           {
             "UserTokenAuth": []
@@ -4820,6 +4852,16 @@
                   "description": "Si se indica, filtra solo convocatorias abiertas (true) o no abiertas (false). Para distinguir entre pendientes y cerradas usa `status_code`.",
                   "default": null
                 },
+                "with_concessions": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Solo convocatorias con al menos una concesión publicada. Acepta true/\"true\"/1/\"1\" como verdadero."
+                },
+                "with_related_funds": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Solo convocatorias con convocatorias relacionadas. Se combina con with_concessions y con el resto de filtros. Acepta true/\"true\"/1/\"1\" como verdadero."
+                },
                 "reviewed": {
                   "type": "boolean",
                   "description": "Acepta true/\"true\"/1/\"1\" como verdadero; cualquier otro valor se trata como falso.",
@@ -4848,6 +4890,18 @@
                   "format": "date",
                   "nullable": true,
                   "description": "Fecha de cierre, fin de rango. Formato YYYY-MM-DD."
+                },
+                "update_date_start": {
+                  "type": "string",
+                  "format": "date",
+                  "nullable": true,
+                  "description": "Fecha de actualización, inicio de rango. Formato YYYY-MM-DD. Devuelve convocatorias con cualquier hito en el rango salvo la apertura del plazo de solicitud (convocatoria general, bases reguladoras, modificación o resolución, creación de fecha de inicio y modificación de fecha)."
+                },
+                "update_date_end": {
+                  "type": "string",
+                  "format": "date",
+                  "nullable": true,
+                  "description": "Fecha de actualización, fin de rango. Formato YYYY-MM-DD."
                 },
                 "platform": {
                   "type": "string",
@@ -4920,6 +4974,18 @@
               "type": "integer",
               "default": 1
             }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "description": "Resultados por página: 20 por defecto, máximo 200. Es un parámetro de query independiente, como page: no va dentro de requestData.",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 200
+            }
           }
         ],
         "responses": {
@@ -4963,6 +5029,38 @@
                           },
                           "total_amount": {
                             "type": "number"
+                          },
+                          "entity": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Entidad convocante."
+                          },
+                          "concessions": {
+                            "type": "integer",
+                            "description": "Número de concesiones publicadas de la convocatoria."
+                          },
+                          "concessions_amount": {
+                            "type": "number",
+                            "description": "Importe total concedido."
+                          },
+                          "related_funds": {
+                            "type": "boolean",
+                            "description": "Si la convocatoria tiene convocatorias relacionadas (consultables en /funds/fund-related/{id}/)."
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "InfoSubvenciones",
+                              "Sede electrónica",
+                              "Fandit Manual",
+                              "Boletines"
+                            ],
+                            "description": "Origen de los datos de la convocatoria."
+                          },
+                          "url": {
+                            "type": "string",
+                            "format": "uri",
+                            "description": "URL pública de la convocatoria, en el dominio de la marca con la que se autentica la llamada. Usa siempre este valor en lugar de construir la URL."
                           }
                         }
                       }
@@ -5074,303 +5172,6 @@
         }
       }
     },
-    "/api/v2/funds/concessions/": {
-      "get": {
-        "tags": [
-          "Subvenciones"
-        ],
-        "summary": "Listado de concesiones",
-        "operationId": "v2_funds_concessions_list",
-        "description": "Listado de fondos con concesiones publicadas (with_concessions=True): ayudas ya resueltas, no convocatorias abiertas en general. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
-        "security": [
-          {
-            "UserTokenAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "requestData",
-            "in": "query",
-            "required": false,
-            "description": "Mismo formato que en /funds/, pero solo un subconjunto de los campos tiene efecto aquí (ver descripción de cada campo).",
-            "schema": {
-              "type": "object",
-              "description": "Todos los campos son opcionales. Se envía serializado como JSON dentro del query param `requestData` (no como query params individuales). Si `requestData` no se envía, se aplican los valores por defecto (equivale a una búsqueda sin filtros). Este endpoint reutiliza el mismo formato requestData que /funds/, pero solo tienen efecto los siguientes campos: actions_v2, activities_v2, applicants_v2, bdns, communities, credit_types, end_date, final_period_end_date, final_period_start_date, max_total_amount, min_total_amount, office, origins, profiles, provinces, region_types, reviewed, search_by_text, sizes, start_date, types. El resto de campos (zip_code, status_code, minimis, min_budget/max_budget, search_by_vectorized_text) se acepta en el JSON pero no se aplica en este endpoint.",
-              "properties": {
-                "provinces": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de provincia.",
-                  "default": []
-                },
-                "communities": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de comunidad autónoma.",
-                  "default": []
-                },
-                "types": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de tipo de convocatoria.",
-                  "default": []
-                },
-                "region_types": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de ámbito territorial.",
-                  "default": []
-                },
-                "applicants_v2": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de tipo de solicitante (mismo espacio de ids que `applicants` en /data-filters/).",
-                  "default": []
-                },
-                "actions_v2": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de acción/línea de ayuda (mismo espacio de ids que `actions` en /data-filters/).",
-                  "default": []
-                },
-                "activities_v2": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de actividad/sector (mismo espacio de ids que `activities` en /data-filters/).",
-                  "default": []
-                },
-                "origins": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de origen de fondos.",
-                  "default": []
-                },
-                "credit_types": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de tipo de ayuda.",
-                  "default": []
-                },
-                "sizes": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de tamaño de empresa.",
-                  "default": []
-                },
-                "profiles": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "description": "IDs de perfil de solicitante.",
-                  "default": []
-                },
-                "search_by_text": {
-                  "type": "string",
-                  "description": "Búsqueda de texto literal (coincidencia de palabras en el título). Úsalo para nombres concretos de convocatoria.",
-                  "default": ""
-                },
-                "search_by_vectorized_text": {
-                  "type": "string",
-                  "description": "Búsqueda semántica vía embeddings: encuentra convocatorias relacionadas con una idea aunque no compartan las palabras exactas. Puede autocompletar automáticamente applicants_v2/actions_v2/communities/provinces si vienen vacíos. Al combinarlo con otros filtros estructurados (por ejemplo `is_open`), estos actúan de forma acumulativa: cuanto más específico sea el texto y más restrictivos los filtros adicionales, menos resultados devolverá la búsqueda, pudiendo llegar a cero si ninguna convocatoria cumple todos los criterios a la vez.",
-                  "default": ""
-                },
-                "is_open": {
-                  "type": "boolean",
-                  "nullable": true,
-                  "description": "Si se indica, filtra solo convocatorias abiertas (true) o no abiertas (false). Para distinguir entre pendientes y cerradas usa `status_code`.",
-                  "default": null
-                },
-                "reviewed": {
-                  "type": "boolean",
-                  "description": "Acepta true/\"true\"/1/\"1\" como verdadero; cualquier otro valor se trata como falso.",
-                  "default": false
-                },
-                "start_date": {
-                  "type": "string",
-                  "format": "date",
-                  "nullable": true,
-                  "description": "Fecha de apertura, inicio de rango. Formato YYYY-MM-DD."
-                },
-                "end_date": {
-                  "type": "string",
-                  "format": "date",
-                  "nullable": true,
-                  "description": "Fecha de apertura, fin de rango. Formato YYYY-MM-DD."
-                },
-                "final_period_start_date": {
-                  "type": "string",
-                  "format": "date",
-                  "nullable": true,
-                  "description": "Fecha de cierre, inicio de rango. Formato YYYY-MM-DD."
-                },
-                "final_period_end_date": {
-                  "type": "string",
-                  "format": "date",
-                  "nullable": true,
-                  "description": "Fecha de cierre, fin de rango. Formato YYYY-MM-DD."
-                },
-                "platform": {
-                  "type": "string",
-                  "nullable": true,
-                  "description": "Slug de plataforma."
-                },
-                "office": {
-                  "description": "Filtro de oficina/organismo (int o string).",
-                  "nullable": true
-                },
-                "bdns": {
-                  "type": "integer",
-                  "nullable": true,
-                  "description": "Código BDNS. Debe enviarse como número entero."
-                },
-                "min_budget": {
-                  "type": "number",
-                  "nullable": true,
-                  "description": "Presupuesto de la ayuda, mínimo de rango."
-                },
-                "max_budget": {
-                  "type": "number",
-                  "nullable": true,
-                  "description": "Presupuesto de la ayuda, máximo de rango."
-                },
-                "order": {
-                  "type": "string",
-                  "default": "-order_score",
-                  "description": "Atributo por el que ordenar los resultados. Antepón un guion (-) para orden descendente. Valores admitidos: `order_score` (afinidad/relevancia con la búsqueda, valor por defecto), `total_amount` (presupuesto), `start_date`, `end_date`, `final_period_start_date` y `final_period_end_date` (fechas). Ejemplos: `-total_amount` (mayor presupuesto primero), `-end_date` (cierre más próximo primero)."
-                },
-                "zip_code": {
-                  "type": "string",
-                  "nullable": true,
-                  "description": "Código postal por el que filtrar."
-                },
-                "status_code": {
-                  "type": "integer",
-                  "nullable": true,
-                  "description": "Filtro por estado de la convocatoria: `0` = pendiente (aún no abierta), `1` = abierta, `2` = cerrada.",
-                  "enum": [
-                    0,
-                    1,
-                    2
-                  ]
-                },
-                "minimis": {
-                  "type": "boolean",
-                  "nullable": true,
-                  "description": "Filtra por régimen de minimis."
-                },
-                "min_total_amount": {
-                  "type": "number",
-                  "nullable": true,
-                  "description": "Importe total de la convocatoria, mínimo de rango."
-                },
-                "max_total_amount": {
-                  "type": "number",
-                  "nullable": true,
-                  "description": "Importe total de la convocatoria, máximo de rango."
-                }
-              }
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "description": "Página del listado. Es un parámetro de query independiente, no va dentro de requestData.",
-            "schema": {
-              "type": "integer",
-              "default": 1
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Listado paginado.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "count": {
-                      "type": "integer"
-                    },
-                    "next": {
-                      "type": "string",
-                      "nullable": true
-                    },
-                    "previous": {
-                      "type": "string",
-                      "nullable": true
-                    },
-                    "results": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer"
-                          },
-                          "slug": {
-                            "type": "string"
-                          },
-                          "formatted_title": {
-                            "type": "string"
-                          },
-                          "status_text": {
-                            "type": "string"
-                          },
-                          "total_amount": {
-                            "type": "number"
-                          },
-                          "concessions_count": {
-                            "type": "integer"
-                          },
-                          "concessions_amount": {
-                            "type": "number"
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Petición inválida (parámetros o formato incorrecto)."
-          },
-          "401": {
-            "description": "Falta la cabecera Authorization o el token no es válido."
-          },
-          "403": {
-            "description": "No autorizado (token del tipo incorrecto, o sin créditos suficientes en endpoints que consumen créditos)."
-          },
-          "404": {
-            "description": "Recurso no encontrado."
-          }
-        }
-      }
-    },
     "/api/v2/funds/concessions/beneficiaries-by-cif/": {
       "get": {
         "tags": [
@@ -5378,7 +5179,7 @@
         ],
         "summary": "Concesiones por CIF",
         "operationId": "v2_funds_concessions_beficiaries_list",
-        "description": "Devuelve el listado de subvenciones/concesiones recibidas por una empresa concreta, identificada por su NIF/CIF: una fila por cada convocatoria que esa empresa ha recibido (nif fijo, fund_id variable). Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas empresas tienen decenas de concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count).",
+        "description": "Devuelve el listado de subvenciones/concesiones recibidas por una empresa concreta, identificada por su NIF/CIF: una fila por cada convocatoria que esa empresa ha recibido (nif fijo, fund_id variable). Filtra solo por nif: es obligatorio y, si no se envía, devuelve 400 con el error «Es necesario enviar el campo nif». fund_id y fund_slug ya no se admiten aquí y se ignoran: para los beneficiarios de una convocatoria usa /funds/concessions/beneficiaries/. Las filas se ordenan por concession_date descendente y, a igualdad, por id descendente; el orden es estable entre páginas (no repite ni omite filas) y las concesiones sin fecha aparecen primero. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas empresas tienen decenas de concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count) o sube page_size.",
         "security": [
           {
             "UserTokenAuth": []
@@ -5412,6 +5213,18 @@
               "type": "integer",
               "default": 1
             }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "description": "Filas por página: 500 por defecto, máximo 1000. Es un parámetro de query independiente, como page: no va dentro de requestData.",
+            "schema": {
+              "type": "integer",
+              "default": 500,
+              "minimum": 1,
+              "maximum": 1000
+            }
           }
         ],
         "responses": {
@@ -5441,14 +5254,6 @@
                           "fund_id": {
                             "type": "integer"
                           },
-                          "fund_slug": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "fund_title": {
-                            "type": "string",
-                            "nullable": true
-                          },
                           "beneficiary_cif": {
                             "type": "string"
                           },
@@ -5457,7 +5262,8 @@
                           },
                           "concession_date": {
                             "type": "string",
-                            "format": "date"
+                            "format": "date",
+                            "nullable": true
                           },
                           "awarded_amount": {
                             "type": "number"
@@ -5471,7 +5277,7 @@
             }
           },
           "400": {
-            "description": "requestData inválido o no se envió nif."
+            "description": "requestData inválido o no se envió nif («Es necesario enviar el campo nif»)."
           },
           "401": {
             "description": "Falta la cabecera Authorization o el token no es válido."
@@ -5492,7 +5298,7 @@
         ],
         "summary": "Concesiones por subvención",
         "operationId": "v2_funds_concessions_by_slug_beficiaries_list",
-        "description": "Devuelve el listado de beneficiarios de una convocatoria concreta, identificada por fund_id o fund_slug: una fila por cada empresa que ha recibido esa convocatoria (fund_id fijo, beneficiario variable). Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas convocatorias tienen más de 1000 concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count).",
+        "description": "Devuelve el listado de beneficiarios de una convocatoria concreta, identificada por fund_id o fund_slug: una fila por cada empresa que ha recibido esa convocatoria (fund_id fijo, beneficiario variable). Filtra solo por convocatoria: si no se envía fund_id ni fund_slug devuelve 400 con el error «Es necesario enviar el campo fund_id o el campo fund_slug». El filtro nif ya no se admite aquí y se ignora: para las concesiones de una empresa usa /funds/concessions/beneficiaries-by-cif/. Las filas ya no incluyen fund_slug ni fund_title: si los necesitas, pídelos una vez a fund-details con el id de la convocatoria. Las filas se ordenan por concession_date descendente y, a igualdad, por id descendente; el orden es estable entre páginas (no repite ni omite filas) y las concesiones sin fecha aparecen primero. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas convocatorias tienen más de 1000 concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count).",
         "security": [
           {
             "UserTokenAuth": []
@@ -5529,6 +5335,18 @@
               "type": "integer",
               "default": 1
             }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "description": "Filas por página: 500 por defecto, máximo 1000. Es un parámetro de query independiente, como page: no va dentro de requestData.",
+            "schema": {
+              "type": "integer",
+              "default": 500,
+              "minimum": 1,
+              "maximum": 1000
+            }
           }
         ],
         "responses": {
@@ -5558,14 +5376,6 @@
                           "fund_id": {
                             "type": "integer"
                           },
-                          "fund_slug": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "fund_title": {
-                            "type": "string",
-                            "nullable": true
-                          },
                           "beneficiary_cif": {
                             "type": "string"
                           },
@@ -5574,7 +5384,8 @@
                           },
                           "concession_date": {
                             "type": "string",
-                            "format": "date"
+                            "format": "date",
+                            "nullable": true
                           },
                           "awarded_amount": {
                             "type": "number"
@@ -5588,7 +5399,7 @@
             }
           },
           "400": {
-            "description": "requestData inválido o no se envió fund_id ni fund_slug."
+            "description": "requestData inválido o no se envió fund_id ni fund_slug («Es necesario enviar el campo fund_id o el campo fund_slug»)."
           },
           "401": {
             "description": "Falta la cabecera Authorization o el token no es válido."
@@ -5609,7 +5420,7 @@
         ],
         "summary": "Evaluación de una subvención",
         "operationId": "v2_funds_evaluation",
-        "description": "Devuelve los criterios de evaluación de la convocatoria (requisitos y si está sujeta a régimen de minimis). Consultar siempre que se pregunte cómo aumentar probabilidades de éxito, qué se valora o cómo preparar mejor una solicitud, aunque no se mencione explícitamente \"evaluación\". Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
+        "description": "Devuelve los criterios de evaluación de la convocatoria (requisitos y si está sujeta a régimen de minimis). Consultar siempre que se pregunte cómo aumentar probabilidades de éxito, qué se valora o cómo preparar mejor una solicitud, aunque no se mencione explícitamente \"evaluación\". Con el parámetro pdf_id, el campo url es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
         "security": [
           {
             "UserTokenAuth": []
@@ -5621,6 +5432,15 @@
             "in": "path",
             "required": true,
             "description": "Id de la convocatoria.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pdf_id",
+            "in": "query",
+            "required": false,
+            "description": "Id de un PDF de la convocatoria. Si se envía, la respuesta incluye el campo url con la URL firmada de ese PDF.",
             "schema": {
               "type": "integer"
             }
@@ -5642,6 +5462,10 @@
                     },
                     "minimis": {
                       "type": "boolean"
+                    },
+                    "url": {
+                      "type": "string",
+                      "description": "Solo con pdf_id. Es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde."
                     }
                   }
                 }
@@ -5670,7 +5494,7 @@
         ],
         "summary": "Normativa de una subvención",
         "operationId": "v2_funds_normative",
-        "description": "Devuelve el listado de normativa disponible: enlaces, PDFs (cada uno con su URL directa y metadatos de clasificación), si es competitiva/no competitiva/minimis, BDNS. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
+        "description": "Devuelve el listado de normativa disponible: enlaces, PDFs (cada uno con su URL directa y metadatos de clasificación), si es competitiva/no competitiva/minimis, BDNS. Si se envía el parámetro opcional pdf_id, devuelve los metadatos y la url de ese PDF en concreto en vez del detalle normativo. Cada enlace a PDF (url con pdf_id, pdf_files[].source sin pdf_id) es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
         "security": [
           {
             "UserTokenAuth": []
@@ -5685,85 +5509,117 @@
             "schema": {
               "type": "integer"
             }
+          },
+          {
+            "name": "pdf_id",
+            "in": "query",
+            "required": false,
+            "description": "Id de un PDF de pdf_files. Si se envía, la respuesta son los metadatos y la url de ese PDF en vez del detalle normativo.",
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Listado de normativa de la convocatoria.",
+            "description": "Sin pdf_id: listado de normativa de la convocatoria. Con pdf_id: metadatos y url del PDF pedido.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "office": {
-                      "type": "string",
-                      "nullable": true
-                    },
-                    "department": {
-                      "type": "string",
-                      "nullable": true
-                    },
-                    "has_regulation_url": {
-                      "type": "boolean"
-                    },
-                    "pdf_files": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer"
-                          },
-                          "title": {
-                            "type": "string"
-                          },
-                          "filename": {
-                            "type": "string"
-                          },
-                          "primary": {
-                            "type": "boolean"
-                          },
-                          "document_type": {
-                            "type": "string",
-                            "nullable": true,
-                            "description": "Tipo de documento (ej. Convocatoria, Modificaciones, Extracto, Bases reguladoras)."
-                          },
-                          "coincidence_category": {
-                            "type": "string",
-                            "nullable": true,
-                            "description": "Categoría de coincidencia del documento con esta convocatoria (ej. Múltiple)."
-                          },
-                          "coincidence_percent": {
-                            "type": "number",
-                            "nullable": true,
-                            "description": "Porcentaje de coincidencia del documento con esta convocatoria."
-                          },
-                          "source": {
-                            "type": "string",
-                            "description": "URL directa de descarga del PDF."
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "office": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "department": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "has_regulation_url": {
+                          "type": "boolean"
+                        },
+                        "pdf_files": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "filename": {
+                                "type": "string"
+                              },
+                              "primary": {
+                                "type": "boolean"
+                              },
+                              "document_type": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Tipo de documento (ej. Convocatoria, Modificaciones, Extracto, Bases reguladoras)."
+                              },
+                              "coincidence_category": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Categoría de coincidencia del documento con esta convocatoria (ej. Múltiple)."
+                              },
+                              "coincidence_percent": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Porcentaje de coincidencia del documento con esta convocatoria."
+                              },
+                              "source": {
+                                "type": "string",
+                                "description": "URL de descarga del PDF. Es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde."
+                              }
+                            }
                           }
+                        },
+                        "has_link": {
+                          "type": "boolean"
+                        },
+                        "bdns_list": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "competitiva": {
+                          "type": "boolean"
+                        },
+                        "no_competitiva": {
+                          "type": "boolean"
+                        },
+                        "minimis": {
+                          "type": "boolean"
                         }
                       }
                     },
-                    "has_link": {
-                      "type": "boolean"
-                    },
-                    "bdns_list": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
+                    {
+                      "type": "object",
+                      "description": "Respuesta con pdf_id.",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "primary": {
+                          "type": "boolean"
+                        },
+                        "url": {
+                          "type": "string",
+                          "description": "URL de descarga del PDF. Es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde."
+                        }
                       }
-                    },
-                    "competitiva": {
-                      "type": "boolean"
-                    },
-                    "no_competitiva": {
-                      "type": "boolean"
-                    },
-                    "minimis": {
-                      "type": "boolean"
                     }
-                  }
+                  ]
                 }
               }
             }
@@ -5790,7 +5646,7 @@
         ],
         "summary": "Subvenciones relacionadas",
         "operationId": "v2_funds_related",
-        "description": "Devuelve el historial de ediciones anteriores de la misma ayuda, sin paginar. Cada elemento incluye el campo previous con el id de la edición inmediatamente anterior, lo que permite seguir recorriendo el historial hacia atrás si se necesita. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
+        "description": "Devuelve las convocatorias relacionadas con una convocatoria (otras ediciones de la misma ayuda), sin paginar. Usa id para consultar el detalle de cada convocatoria relacionada y url para enlazarla. previous tiene el mismo valor que id y se mantiene solo por compatibilidad. total_amount y concessions_amount vienen redondeados a 2 decimales. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
         "security": [
           {
             "UserTokenAuth": []
@@ -5817,6 +5673,15 @@
                   "items": {
                     "type": "object",
                     "properties": {
+                      "id": {
+                        "type": "integer",
+                        "description": "Id de la convocatoria relacionada. Úsalo para pedir su detalle."
+                      },
+                      "url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "URL pública de la convocatoria relacionada, en el dominio de tu marca."
+                      },
                       "register_date": {
                         "type": "string",
                         "format": "date"
@@ -5835,7 +5700,8 @@
                         "type": "string"
                       },
                       "total_amount": {
-                        "type": "number"
+                        "type": "number",
+                        "description": "Redondeado a 2 decimales."
                       },
                       "fund_scope": {
                         "type": "string"
@@ -5844,7 +5710,8 @@
                         "type": "integer"
                       },
                       "concessions_amount": {
-                        "type": "number"
+                        "type": "number",
+                        "description": "Redondeado a 2 decimales."
                       },
                       "entity": {
                         "type": "string",
@@ -5860,8 +5727,7 @@
                       },
                       "previous": {
                         "type": "integer",
-                        "nullable": true,
-                        "description": "Id de la edición anterior a esta en el historial, o null si no hay ninguna más antigua."
+                        "description": "Mismo valor que id. Se mantiene solo por compatibilidad: usa id."
                       }
                     }
                   }
@@ -5891,7 +5757,7 @@
         ],
         "summary": "Documentos requeridos de una subvención",
         "operationId": "v2_funds_required_documents",
-        "description": "Devuelve la documentación requerida para solicitar la convocatoria. Combinar con fund-evaluation cuando se pregunte por estrategia de éxito: sin la documentación correcta ni siquiera se evalúa la solicitud. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
+        "description": "Devuelve la documentación requerida para solicitar la convocatoria. Combinar con fund-evaluation cuando se pregunte por estrategia de éxito: sin la documentación correcta ni siquiera se evalúa la solicitud. Con el parámetro pdf_id, el campo url es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
         "security": [
           {
             "UserTokenAuth": []
@@ -5903,6 +5769,15 @@
             "in": "path",
             "required": true,
             "description": "Id de la convocatoria.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pdf_id",
+            "in": "query",
+            "required": false,
+            "description": "Id de un PDF de la convocatoria. Si se envía, la respuesta incluye el campo url con la URL firmada de ese PDF.",
             "schema": {
               "type": "integer"
             }
@@ -5938,6 +5813,10 @@
                           }
                         }
                       }
+                    },
+                    "url": {
+                      "type": "string",
+                      "description": "Solo con pdf_id. Es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde."
                     }
                   }
                 }

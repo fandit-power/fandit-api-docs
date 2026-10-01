@@ -1209,7 +1209,7 @@ paths:
       - Filtros
       summary: Filtros generales
       operationId: data_filters
-      description: 'Devuelve el catálogo completo de valores de referencia usados por el resto de endpoints: tipos de solicitante, actividades/sectores, comunidades autónomas y provincias (con provinces anidadas), líneas de crédito, orígenes de fondos, tipos de ayuda, CNAEs, grupos de acción, etc. Cada elemento trae su id, que es el que hay que usar como filtro en los demás endpoints. Los ids devueltos aquí bajo applicants, activities y actions son compatibles con los campos applicants_v2/activities_v2/actions_v2 usados en /funds/ y /funds/concessions/ (mismo espacio de ids, a pesar de la diferencia de nombre). No consume créditos, solo requiere token de usuario.'
+      description: 'Devuelve el catálogo completo de valores de referencia usados por el resto de endpoints: tipos de solicitante, actividades/sectores, comunidades autónomas y provincias (con provinces anidadas), líneas de crédito, orígenes de fondos, tipos de ayuda, CNAEs, grupos de acción, etc. Cada elemento trae su id, que es el que hay que usar como filtro en los demás endpoints. Los ids devueltos aquí bajo applicants, activities y actions son compatibles con los campos applicants_v2/activities_v2/actions_v2 usados en /funds/ (mismo espacio de ids, a pesar de la diferencia de nombre). Las actividades (activities) ya no incluyen su lista de CNAE. El catálogo de CNAE sigue disponible en la lista de primer nivel cnaes, pero está previsto eliminarla en una próxima versión. No consume créditos, solo requiere token de usuario.'
       security:
       - UserTokenAuth: []
       responses:
@@ -1274,6 +1274,8 @@ paths:
                           type: integer
                         title:
                           type: string
+                    deprecated: true
+                    description: 'Catálogo de CNAE. Obsoleto: está previsto eliminarlo en una próxima versión.'
                   communities:
                     type: array
                     items:
@@ -2907,7 +2909,7 @@ paths:
       - Subvenciones
       summary: Detalles de una subvención
       operationId: v2_funds_detail
-      description: 'Detalle completo de una convocatoria activa. Acepta como identificador el id numérico o el slug de la convocatoria (el slug se normaliza a minúsculas). Este endpoint solo cubre convocatorias activas: una convocatoria histórica o ya resuelta devuelve 404 aunque el identificador sea válido; para consultar esas, usa /funds/concessions/ o /funds/concessions/beneficiaries*. Para preguntas sobre cómo aumentar las probabilidades de éxito de una solicitud, combina este endpoint con fund-evaluation y fund-required-documents. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
+      description: 'Detalle completo de una convocatoria activa. Acepta como identificador el id numérico o el slug de la convocatoria (el slug se normaliza a minúsculas). Este endpoint solo cubre convocatorias activas: una convocatoria histórica o ya resuelta devuelve 404 aunque el identificador sea válido; para consultar sus beneficiarios, usa /funds/concessions/beneficiaries/. La respuesta incluye el número e importe total de concesiones (concessions, concessions_amount), si tiene convocatorias relacionadas (related_funds), el origen de los datos (source) y la URL pública de la convocatoria (url), que usa el dominio de la marca con la que se autentica la llamada: usa siempre ese valor en lugar de construirla. Para preguntas sobre cómo aumentar las probabilidades de éxito de una solicitud, combina este endpoint con fund-evaluation y fund-required-documents. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
       security:
       - UserTokenAuth: []
       parameters:
@@ -2959,6 +2961,27 @@ paths:
                     type: string
                   info_extra:
                     type: string
+                  concessions:
+                    type: integer
+                    description: Número de concesiones publicadas de la convocatoria.
+                  concessions_amount:
+                    type: number
+                    description: Importe total concedido.
+                  related_funds:
+                    type: boolean
+                    description: Si la convocatoria tiene convocatorias relacionadas (consultables en /funds/fund-related/{id}/).
+                  source:
+                    type: string
+                    enum:
+                    - InfoSubvenciones
+                    - Sede electrónica
+                    - Fandit Manual
+                    - Boletines
+                    description: Origen de los datos de la convocatoria.
+                  url:
+                    type: string
+                    format: uri
+                    description: URL pública de la convocatoria, en el dominio de la marca con la que se autentica la llamada. Usa siempre este valor en lugar de construir la URL.
         '404':
           description: No existe o no está activa (ver nota en la descripción sobre convocatorias históricas).
         '400': *id001
@@ -2970,7 +2993,7 @@ paths:
       - Subvenciones
       summary: Ayudas de mínimis por NIF
       operationId: v2_funds_minimis_by_nif
-      description: 'Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
+      description: 'Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Si el NIF no tiene concesiones devuelve 200 con un array vacío. Si falta el NIF devuelve 400 con el error «El NIF es requerido», y si no es válido, 400 con el mensaje de validación. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
       security:
       - UserTokenAuth: []
       requestBody:
@@ -2989,7 +3012,7 @@ paths:
               nif: B12345678
       responses:
         '200':
-          description: Array plano con las concesiones de mínimis del NIF.
+          description: Array plano con las concesiones de mínimis del NIF (vacío si no tiene ninguna).
           content:
             application/json:
               schema:
@@ -3000,20 +3023,26 @@ paths:
                     bdns:
                       type: string
                       description: Código BDNS de la convocatoria.
+                      nullable: true
                     organs:
                       type: string
                       description: Órgano concedente.
+                      nullable: true
                     minimis:
                       type: string
                       description: Reglamento de mínimis aplicado.
+                      nullable: true
                     concession_date:
                       type: string
                       format: date
+                      nullable: true
                     activity:
                       type: string
                       description: Actividad económica del beneficiario.
+                      nullable: true
                     concession_amount:
                       type: number
+                      nullable: true
               example:
               - bdns: '787822'
                 organs: ESTADO MINISTERIO DE INDUSTRIA Y TURISMO FUNDACIÓN EOI, F.S.P.
@@ -3028,18 +3057,16 @@ paths:
                 activity: H - TRANSPORTE Y ALMACENAMIENTO; T - OTROS SERVICIOS
                 concession_amount: 50000.0
         '400':
-          description: Falta el campo `nif` o no tiene un formato válido.
+          description: Falta el campo nif («El NIF es requerido») o no tiene un formato válido (mensaje de validación).
         '401': *id002
         '403': *id003
-        '404':
-          description: No hay concesiones de mínimis para ese NIF.
   /api/v2/funds/:
     get:
       tags:
       - Subvenciones
       summary: Listado de subvenciones
       operationId: v2_funds_list
-      description: 'Listado de convocatorias activas (active=True) con un amplio sistema de filtros, incluyendo búsqueda semántica vectorizada (search_by_vectorized_text) que puede autocompletar filtros. Si se necesita el total de resultados y la respuesta no cabe en una página, seguir pidiendo páginas siguientes con el parámetro page hasta agotar los resultados (usar count). Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
+      description: 'Listado de convocatorias activas (active=True) con un amplio sistema de filtros, incluyendo búsqueda semántica vectorizada (search_by_vectorized_text) que puede autocompletar filtros. Si se necesita el total de resultados y la respuesta no cabe en una página, seguir pidiendo páginas siguientes con el parámetro page hasta agotar los resultados (usar count). Para obtener solo convocatorias con concesiones publicadas (lo que antes devolvía /funds/concessions/, ya eliminado) envía with_concessions: true en requestData. Cada resultado incluye el número e importe de concesiones (concessions, concessions_amount), si tiene convocatorias relacionadas (related_funds), el origen de los datos (source) y la URL pública de la convocatoria (url) en el dominio de tu marca; usa siempre ese valor en lugar de construirla. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
       security:
       - UserTokenAuth: []
       parameters:
@@ -3050,7 +3077,7 @@ paths:
         schema:
           type: object
           description: Todos los campos son opcionales. Se envía serializado como JSON dentro del query param `requestData` (no como query params individuales). Si `requestData` no se envía, se aplican los valores por defecto (equivale a una búsqueda sin filtros).
-          properties: &id005
+          properties:
             provinces:
               type: array
               items:
@@ -3130,6 +3157,14 @@ paths:
               nullable: true
               description: Si se indica, filtra solo convocatorias abiertas (true) o no abiertas (false). Para distinguir entre pendientes y cerradas usa `status_code`.
               default: null
+            with_concessions:
+              type: boolean
+              default: false
+              description: Solo convocatorias con al menos una concesión publicada. Acepta true/"true"/1/"1" como verdadero.
+            with_related_funds:
+              type: boolean
+              default: false
+              description: Solo convocatorias con convocatorias relacionadas. Se combina con with_concessions y con el resto de filtros. Acepta true/"true"/1/"1" como verdadero.
             reviewed:
               type: boolean
               description: Acepta true/"true"/1/"1" como verdadero; cualquier otro valor se trata como falso.
@@ -3154,6 +3189,16 @@ paths:
               format: date
               nullable: true
               description: Fecha de cierre, fin de rango. Formato YYYY-MM-DD.
+            update_date_start:
+              type: string
+              format: date
+              nullable: true
+              description: Fecha de actualización, inicio de rango. Formato YYYY-MM-DD. Devuelve convocatorias con cualquier hito en el rango salvo la apertura del plazo de solicitud (convocatoria general, bases reguladoras, modificación o resolución, creación de fecha de inicio y modificación de fecha).
+            update_date_end:
+              type: string
+              format: date
+              nullable: true
+              description: Fecha de actualización, fin de rango. Formato YYYY-MM-DD.
             platform:
               type: string
               nullable: true
@@ -3208,6 +3253,15 @@ paths:
         schema:
           type: integer
           default: 1
+      - name: page_size
+        in: query
+        required: false
+        description: 'Resultados por página: 20 por defecto, máximo 200. Es un parámetro de query independiente, como page: no va dentro de requestData.'
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 200
       responses:
         '200':
           description: Listado paginado (o array plano si no hay paginación, cuando page es None).
@@ -3241,6 +3295,31 @@ paths:
                           type: integer
                         total_amount:
                           type: number
+                        entity:
+                          type: string
+                          nullable: true
+                          description: Entidad convocante.
+                        concessions:
+                          type: integer
+                          description: Número de concesiones publicadas de la convocatoria.
+                        concessions_amount:
+                          type: number
+                          description: Importe total concedido.
+                        related_funds:
+                          type: boolean
+                          description: Si la convocatoria tiene convocatorias relacionadas (consultables en /funds/fund-related/{id}/).
+                        source:
+                          type: string
+                          enum:
+                          - InfoSubvenciones
+                          - Sede electrónica
+                          - Fandit Manual
+                          - Boletines
+                          description: Origen de los datos de la convocatoria.
+                        url:
+                          type: string
+                          format: uri
+                          description: URL pública de la convocatoria, en el dominio de la marca con la que se autentica la llamada. Usa siempre este valor en lugar de construir la URL.
         '400':
           description: 'Filtros de fecha/monto inválidos, p.ej. {"errors": "Rango de fechas inválidas"} o {"errors": "Rango de montos inválidos"}.'
         '401': *id002
@@ -3301,77 +3380,13 @@ paths:
           description: El servicio externo de chatbot no devolvió JSON válido.
         '401': *id002
         '403': *id003
-  /api/v2/funds/concessions/:
-    get:
-      tags:
-      - Subvenciones
-      summary: Listado de concesiones
-      operationId: v2_funds_concessions_list
-      description: 'Listado de fondos con concesiones publicadas (with_concessions=True): ayudas ya resueltas, no convocatorias abiertas en general. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
-      security:
-      - UserTokenAuth: []
-      parameters:
-      - name: requestData
-        in: query
-        required: false
-        description: Mismo formato que en /funds/, pero solo un subconjunto de los campos tiene efecto aquí (ver descripción de cada campo).
-        schema:
-          type: object
-          description: 'Todos los campos son opcionales. Se envía serializado como JSON dentro del query param `requestData` (no como query params individuales). Si `requestData` no se envía, se aplican los valores por defecto (equivale a una búsqueda sin filtros). Este endpoint reutiliza el mismo formato requestData que /funds/, pero solo tienen efecto los siguientes campos: actions_v2, activities_v2, applicants_v2, bdns, communities, credit_types, end_date, final_period_end_date, final_period_start_date, max_total_amount, min_total_amount, office, origins, profiles, provinces, region_types, reviewed, search_by_text, sizes, start_date, types. El resto de campos (zip_code, status_code, minimis, min_budget/max_budget, search_by_vectorized_text) se acepta en el JSON pero no se aplica en este endpoint.'
-          properties: *id005
-      - name: page
-        in: query
-        required: false
-        description: Página del listado. Es un parámetro de query independiente, no va dentro de requestData.
-        schema:
-          type: integer
-          default: 1
-      responses:
-        '200':
-          description: Listado paginado.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  count:
-                    type: integer
-                  next:
-                    type: string
-                    nullable: true
-                  previous:
-                    type: string
-                    nullable: true
-                  results:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                        slug:
-                          type: string
-                        formatted_title:
-                          type: string
-                        status_text:
-                          type: string
-                        total_amount:
-                          type: number
-                        concessions_count:
-                          type: integer
-                        concessions_amount:
-                          type: number
-        '400': *id001
-        '401': *id002
-        '403': *id003
-        '404': *id004
   /api/v2/funds/concessions/beneficiaries-by-cif/:
     get:
       tags:
       - Subvenciones
       summary: Concesiones por CIF
       operationId: v2_funds_concessions_beficiaries_list
-      description: 'Devuelve el listado de subvenciones/concesiones recibidas por una empresa concreta, identificada por su NIF/CIF: una fila por cada convocatoria que esa empresa ha recibido (nif fijo, fund_id variable). Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas empresas tienen decenas de concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count).'
+      description: 'Devuelve el listado de subvenciones/concesiones recibidas por una empresa concreta, identificada por su NIF/CIF: una fila por cada convocatoria que esa empresa ha recibido (nif fijo, fund_id variable). Filtra solo por nif: es obligatorio y, si no se envía, devuelve 400 con el error «Es necesario enviar el campo nif». fund_id y fund_slug ya no se admiten aquí y se ignoran: para los beneficiarios de una convocatoria usa /funds/concessions/beneficiaries/. Las filas se ordenan por concession_date descendente y, a igualdad, por id descendente; el orden es estable entre páginas (no repite ni omite filas) y las concesiones sin fecha aparecen primero. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas empresas tienen decenas de concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count) o sube page_size.'
       security:
       - UserTokenAuth: []
       parameters:
@@ -3394,6 +3409,15 @@ paths:
         schema:
           type: integer
           default: 1
+      - name: page_size
+        in: query
+        required: false
+        description: 'Filas por página: 500 por defecto, máximo 1000. Es un parámetro de query independiente, como page: no va dentro de requestData.'
+        schema:
+          type: integer
+          default: 500
+          minimum: 1
+          maximum: 1000
       responses:
         '200':
           description: Listado paginado.
@@ -3412,17 +3436,11 @@ paths:
                     nullable: true
                   results:
                     type: array
-                    items: &id006
+                    items: &id005
                       type: object
                       properties:
                         fund_id:
                           type: integer
-                        fund_slug:
-                          type: string
-                          nullable: true
-                        fund_title:
-                          type: string
-                          nullable: true
                         beneficiary_cif:
                           type: string
                         beneficiary_name:
@@ -3430,10 +3448,11 @@ paths:
                         concession_date:
                           type: string
                           format: date
+                          nullable: true
                         awarded_amount:
                           type: number
         '400':
-          description: requestData inválido o no se envió nif.
+          description: requestData inválido o no se envió nif («Es necesario enviar el campo nif»).
         '401': *id002
         '403': *id003
         '404': *id004
@@ -3443,7 +3462,7 @@ paths:
       - Subvenciones
       summary: Concesiones por subvención
       operationId: v2_funds_concessions_by_slug_beficiaries_list
-      description: 'Devuelve el listado de beneficiarios de una convocatoria concreta, identificada por fund_id o fund_slug: una fila por cada empresa que ha recibido esa convocatoria (fund_id fijo, beneficiario variable). Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas convocatorias tienen más de 1000 concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count).'
+      description: 'Devuelve el listado de beneficiarios de una convocatoria concreta, identificada por fund_id o fund_slug: una fila por cada empresa que ha recibido esa convocatoria (fund_id fijo, beneficiario variable). Filtra solo por convocatoria: si no se envía fund_id ni fund_slug devuelve 400 con el error «Es necesario enviar el campo fund_id o el campo fund_slug». El filtro nif ya no se admite aquí y se ignora: para las concesiones de una empresa usa /funds/concessions/beneficiaries-by-cif/. Las filas ya no incluyen fund_slug ni fund_title: si los necesitas, pídelos una vez a fund-details con el id de la convocatoria. Las filas se ordenan por concession_date descendente y, a igualdad, por id descendente; el orden es estable entre páginas (no repite ni omite filas) y las concesiones sin fecha aparecen primero. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas convocatorias tienen más de 1000 concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count).'
       security:
       - UserTokenAuth: []
       parameters:
@@ -3469,6 +3488,15 @@ paths:
         schema:
           type: integer
           default: 1
+      - name: page_size
+        in: query
+        required: false
+        description: 'Filas por página: 500 por defecto, máximo 1000. Es un parámetro de query independiente, como page: no va dentro de requestData.'
+        schema:
+          type: integer
+          default: 500
+          minimum: 1
+          maximum: 1000
       responses:
         '200':
           description: Listado paginado.
@@ -3487,9 +3515,9 @@ paths:
                     nullable: true
                   results:
                     type: array
-                    items: *id006
+                    items: *id005
         '400':
-          description: requestData inválido o no se envió fund_id ni fund_slug.
+          description: requestData inválido o no se envió fund_id ni fund_slug («Es necesario enviar el campo fund_id o el campo fund_slug»).
         '401': *id002
         '403': *id003
         '404': *id004
@@ -3499,7 +3527,7 @@ paths:
       - Subvenciones
       summary: Evaluación de una subvención
       operationId: v2_funds_evaluation
-      description: 'Devuelve los criterios de evaluación de la convocatoria (requisitos y si está sujeta a régimen de minimis). Consultar siempre que se pregunte cómo aumentar probabilidades de éxito, qué se valora o cómo preparar mejor una solicitud, aunque no se mencione explícitamente "evaluación". Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
+      description: 'Devuelve los criterios de evaluación de la convocatoria (requisitos y si está sujeta a régimen de minimis). Consultar siempre que se pregunte cómo aumentar probabilidades de éxito, qué se valora o cómo preparar mejor una solicitud, aunque no se mencione explícitamente "evaluación". Con el parámetro pdf_id, el campo url es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
       security:
       - UserTokenAuth: []
       parameters:
@@ -3507,6 +3535,12 @@ paths:
         in: path
         required: true
         description: Id de la convocatoria.
+        schema:
+          type: integer
+      - name: pdf_id
+        in: query
+        required: false
+        description: Id de un PDF de la convocatoria. Si se envía, la respuesta incluye el campo url con la URL firmada de ese PDF.
         schema:
           type: integer
       responses:
@@ -3523,6 +3557,9 @@ paths:
                     type: string
                   minimis:
                     type: boolean
+                  url:
+                    type: string
+                    description: 'Solo con pdf_id. Es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde.'
         '404':
           description: Convocatoria inexistente.
         '400': *id001
@@ -3534,7 +3571,7 @@ paths:
       - Subvenciones
       summary: Normativa de una subvención
       operationId: v2_funds_normative
-      description: 'Devuelve el listado de normativa disponible: enlaces, PDFs (cada uno con su URL directa y metadatos de clasificación), si es competitiva/no competitiva/minimis, BDNS. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
+      description: 'Devuelve el listado de normativa disponible: enlaces, PDFs (cada uno con su URL directa y metadatos de clasificación), si es competitiva/no competitiva/minimis, BDNS. Si se envía el parámetro opcional pdf_id, devuelve los metadatos y la url de ese PDF en concreto en vez del detalle normativo. Cada enlace a PDF (url con pdf_id, pdf_files[].source sin pdf_id) es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
       security:
       - UserTokenAuth: []
       parameters:
@@ -3544,62 +3581,81 @@ paths:
         description: Id de la convocatoria.
         schema:
           type: integer
+      - name: pdf_id
+        in: query
+        required: false
+        description: Id de un PDF de pdf_files. Si se envía, la respuesta son los metadatos y la url de ese PDF en vez del detalle normativo.
+        schema:
+          type: integer
       responses:
         '200':
-          description: Listado de normativa de la convocatoria.
+          description: 'Sin pdf_id: listado de normativa de la convocatoria. Con pdf_id: metadatos y url del PDF pedido.'
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  office:
-                    type: string
-                    nullable: true
-                  department:
-                    type: string
-                    nullable: true
-                  has_regulation_url:
-                    type: boolean
-                  pdf_files:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                        title:
-                          type: string
-                        filename:
-                          type: string
-                        primary:
-                          type: boolean
-                        document_type:
-                          type: string
-                          nullable: true
-                          description: Tipo de documento (ej. Convocatoria, Modificaciones, Extracto, Bases reguladoras).
-                        coincidence_category:
-                          type: string
-                          nullable: true
-                          description: Categoría de coincidencia del documento con esta convocatoria (ej. Múltiple).
-                        coincidence_percent:
-                          type: number
-                          nullable: true
-                          description: Porcentaje de coincidencia del documento con esta convocatoria.
-                        source:
-                          type: string
-                          description: URL directa de descarga del PDF.
-                  has_link:
-                    type: boolean
-                  bdns_list:
-                    type: array
-                    items:
+                oneOf:
+                - type: object
+                  properties:
+                    office:
                       type: string
-                  competitiva:
-                    type: boolean
-                  no_competitiva:
-                    type: boolean
-                  minimis:
-                    type: boolean
+                      nullable: true
+                    department:
+                      type: string
+                      nullable: true
+                    has_regulation_url:
+                      type: boolean
+                    pdf_files:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          title:
+                            type: string
+                          filename:
+                            type: string
+                          primary:
+                            type: boolean
+                          document_type:
+                            type: string
+                            nullable: true
+                            description: Tipo de documento (ej. Convocatoria, Modificaciones, Extracto, Bases reguladoras).
+                          coincidence_category:
+                            type: string
+                            nullable: true
+                            description: Categoría de coincidencia del documento con esta convocatoria (ej. Múltiple).
+                          coincidence_percent:
+                            type: number
+                            nullable: true
+                            description: Porcentaje de coincidencia del documento con esta convocatoria.
+                          source:
+                            type: string
+                            description: 'URL de descarga del PDF. Es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde.'
+                    has_link:
+                      type: boolean
+                    bdns_list:
+                      type: array
+                      items:
+                        type: string
+                    competitiva:
+                      type: boolean
+                    no_competitiva:
+                      type: boolean
+                    minimis:
+                      type: boolean
+                - type: object
+                  description: Respuesta con pdf_id.
+                  properties:
+                    id:
+                      type: integer
+                    title:
+                      type: string
+                    primary:
+                      type: boolean
+                    url:
+                      type: string
+                      description: 'URL de descarga del PDF. Es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde.'
         '404':
           description: Convocatoria inexistente.
         '400': *id001
@@ -3611,7 +3667,7 @@ paths:
       - Subvenciones
       summary: Subvenciones relacionadas
       operationId: v2_funds_related
-      description: 'Devuelve el historial de ediciones anteriores de la misma ayuda, sin paginar. Cada elemento incluye el campo previous con el id de la edición inmediatamente anterior, lo que permite seguir recorriendo el historial hacia atrás si se necesita. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
+      description: 'Devuelve las convocatorias relacionadas con una convocatoria (otras ediciones de la misma ayuda), sin paginar. Usa id para consultar el detalle de cada convocatoria relacionada y url para enlazarla. previous tiene el mismo valor que id y se mantiene solo por compatibilidad. total_amount y concessions_amount vienen redondeados a 2 decimales. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
       security:
       - UserTokenAuth: []
       parameters:
@@ -3631,6 +3687,13 @@ paths:
                 items:
                   type: object
                   properties:
+                    id:
+                      type: integer
+                      description: Id de la convocatoria relacionada. Úsalo para pedir su detalle.
+                    url:
+                      type: string
+                      format: uri
+                      description: URL pública de la convocatoria relacionada, en el dominio de tu marca.
                     register_date:
                       type: string
                       format: date
@@ -3645,12 +3708,14 @@ paths:
                       type: string
                     total_amount:
                       type: number
+                      description: Redondeado a 2 decimales.
                     fund_scope:
                       type: string
                     concessions_count:
                       type: integer
                     concessions_amount:
                       type: number
+                      description: Redondeado a 2 decimales.
                     entity:
                       type: string
                       nullable: true
@@ -3662,8 +3727,7 @@ paths:
                       nullable: true
                     previous:
                       type: integer
-                      nullable: true
-                      description: Id de la edición anterior a esta en el historial, o null si no hay ninguna más antigua.
+                      description: 'Mismo valor que id. Se mantiene solo por compatibilidad: usa id.'
         '400': *id001
         '401': *id002
         '403': *id003
@@ -3674,7 +3738,7 @@ paths:
       - Subvenciones
       summary: Documentos requeridos de una subvención
       operationId: v2_funds_required_documents
-      description: 'Devuelve la documentación requerida para solicitar la convocatoria. Combinar con fund-evaluation cuando se pregunte por estrategia de éxito: sin la documentación correcta ni siquiera se evalúa la solicitud. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
+      description: 'Devuelve la documentación requerida para solicitar la convocatoria. Combinar con fund-evaluation cuando se pregunte por estrategia de éxito: sin la documentación correcta ni siquiera se evalúa la solicitud. Con el parámetro pdf_id, el campo url es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.'
       security:
       - UserTokenAuth: []
       parameters:
@@ -3682,6 +3746,12 @@ paths:
         in: path
         required: true
         description: Id de la convocatoria.
+        schema:
+          type: integer
+      - name: pdf_id
+        in: query
+        required: false
+        description: Id de un PDF de la convocatoria. Si se envía, la respuesta incluye el campo url con la URL firmada de ese PDF.
         schema:
           type: integer
       responses:
@@ -3707,6 +3777,9 @@ paths:
                           type: string
                         primary:
                           type: boolean
+                  url:
+                    type: string
+                    description: 'Solo con pdf_id. Es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde.'
         '404':
           description: Convocatoria inexistente.
         '400': *id001

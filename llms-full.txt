@@ -1,6 +1,6 @@
 # Documentación técnica de la API de FANDIT (referencia única)
 
-Este documento reúne en un solo archivo continuo toda la documentación técnica de la API REST v2 de FANDIT (y los endpoints legacy v1 de Single Sign-On), pensado para ser leído de un tirón por un LLM sin depender de navegación entre páginas. Cubre: autenticación, manejo de errores, paginación, y la referencia completa de los 46 endpoints agrupados por bloque funcional (Filtros, Autenticación, Usuarios, Subvenciones, Expedientes, Clientes, Contactos, SSO legacy). No cubre otras áreas del producto FANDIT (Buscador web, Asistente IA, Alertas, Automatizaciones, etc.) más allá de lo que se expone vía esta API.
+Este documento reúne en un solo archivo continuo toda la documentación técnica de la API REST v2 de FANDIT (y los endpoints legacy v1 de Single Sign-On), pensado para ser leído de un tirón por un LLM sin depender de navegación entre páginas. Cubre: autenticación, manejo de errores, paginación, y la referencia completa de los 45 endpoints agrupados por bloque funcional (Filtros, Autenticación, Usuarios, Subvenciones, Expedientes, Clientes, Contactos, SSO legacy). No cubre otras áreas del producto FANDIT (Buscador web, Asistente IA, Alertas, Automatizaciones, etc.) más allá de lo que se expone vía esta API.
 
 ## URLs base
 
@@ -39,7 +39,9 @@ Salvo que se indique lo contrario en la ficha de un endpoint concreto, estos son
 
 ## Paginación
 
-Todos los listados paginados de la API (incluidos los del bloque Subvenciones que usan `requestData`: `GET /funds/`, `GET /funds/concessions/`, `GET /funds/concessions/beneficiaries*`) usan el mismo esquema: el parámetro `page` va como query param independiente en la URL (empieza en `1`), **no** dentro del JSON de `requestData`. La respuesta trae `count`, `next`, `previous` y `results`.
+Todos los listados paginados de la API (incluidos los del bloque Subvenciones que usan `requestData`: `GET /funds/`, `GET /funds/concessions/beneficiaries*`) usan el mismo esquema: el parámetro `page` va como query param independiente en la URL (empieza en `1`), **no** dentro del JSON de `requestData`. La respuesta trae `count`, `next`, `previous` y `results`.
+
+El tamaño de página se ajusta con `page_size`, que también va como query param independiente (fuera de `requestData`, igual que `page`): en `GET /funds/` son 20 resultados por defecto y como máximo 200; en `GET /funds/concessions/beneficiaries*`, 500 filas por defecto y como máximo 1000.
 
 `GET /funds/fund-related/{id}/` no está paginado: devuelve un array plano con todos los resultados.
 
@@ -47,7 +49,7 @@ Algunas convocatorias tienen más de 1.000 concesiones asociadas (por ejemplo, u
 
 ## Otras particularidades a tener en cuenta
 
-**Formato de fechas.** Los campos de fecha del bloque Subvenciones (`start_date`, `end_date`, `final_period_start_date`, `final_period_end_date`) deben enviarse en formato exacto `YYYY-MM-DD`.
+**Formato de fechas.** Los campos de fecha del bloque Subvenciones (`start_date`, `end_date`, `final_period_start_date`, `final_period_end_date`, `update_date_start`, `update_date_end`) deben enviarse en formato exacto `YYYY-MM-DD`.
 
 
 **`bdns` debe ser un número entero.** El filtro `bdns` (código BDNS) del listado de subvenciones espera un valor numérico entero.
@@ -56,10 +58,16 @@ Algunas convocatorias tienen más de 1.000 concesiones asociadas (por ejemplo, u
 **Búsqueda semántica combinada con otros filtros.** `search_by_vectorized_text` se puede combinar con otros filtros (por ejemplo `is_open`) en la misma llamada; los filtros actúan de forma acumulativa. Con un texto muy largo o específico junto con filtros restrictivos, el resultado puede acotarse mucho e incluso llegar a 0 si ninguna convocatoria cumple todos los criterios a la vez — es el comportamiento esperado, no un error.
 
 
-**`funds/concessions/` reutiliza el formato de `funds/` pero solo aplica un subconjunto de filtros.** `GET /funds/concessions/` acepta el mismo JSON `requestData` que `GET /funds/`, pero solo tienen efecto los campos indicados en la ficha del endpoint. Los campos no soportados ahí (`zip_code`, `status_code`, `minimis`, `min_budget`/`max_budget`, `search_by_vectorized_text`) se aceptan en el JSON pero no se aplican.
+**`GET /funds/concessions/` ya no existe.** Para listar solo convocatorias con concesiones publicadas, usa `GET /funds/` con `with_concessions: true` en `requestData`. Se combina con el resto de filtros de `/funds/` y con `with_related_funds` (solo convocatorias con convocatorias relacionadas).
 
 
-**`beneficiaries-by-cif` y `beneficiaries` devuelven listados distintos.** `GET /funds/concessions/beneficiaries-by-cif/` (filtra por `nif`) devuelve el listado de subvenciones/concesiones recibidas por una empresa concreta: una fila por cada convocatoria que esa empresa ha recibido. `GET /funds/concessions/beneficiaries/` (filtra por `fund_id`/`fund_slug`) devuelve el listado de beneficiarios de una convocatoria concreta: una fila por cada empresa que la ha recibido. Ambos resultados usan el mismo esquema de campos por fila (fund_id, fund_slug, fund_title, beneficiary_cif, beneficiary_name, concession_date, awarded_amount), pero no son intercambiables: cada uno solo acepta su propio parámetro de filtro.
+**`beneficiaries-by-cif` y `beneficiaries` devuelven listados distintos.** `GET /funds/concessions/beneficiaries-by-cif/` (filtra por `nif`) devuelve el listado de subvenciones/concesiones recibidas por una empresa concreta: una fila por cada convocatoria que esa empresa ha recibido. `GET /funds/concessions/beneficiaries/` (filtra por `fund_id`/`fund_slug`) devuelve el listado de beneficiarios de una convocatoria concreta: una fila por cada empresa que la ha recibido. No son intercambiables: cada uno solo acepta su propio filtro, que es obligatorio (sin él devuelve 400), e ignora el del otro. Las filas de `beneficiaries-by-cif` traen fund_id, fund_slug, fund_title, beneficiary_cif, beneficiary_name, concession_date y awarded_amount; las de `beneficiaries` ya no traen fund_slug ni fund_title, porque son los mismos en todas las filas: si los necesitas, pídelos una vez a `fund-details` con el id de la convocatoria. Ambos ordenan por `concession_date` descendente y, a igualdad, por `id` descendente; el orden es estable entre páginas (no repite ni omite filas) y las concesiones sin fecha aparecen primero.
+
+
+**Usa la `url` que devuelve la API para enlazar una convocatoria.** `GET /funds/`, `GET /fund-details/{identifier}/` y `GET /funds/fund-related/{id}/` devuelven en cada convocatoria el campo `url`, su URL pública en el dominio de la marca con la que se autentica la llamada. Úsalo tal cual en lugar de construir la URL a mano.
+
+
+**Las URLs de los PDF caducan.** Los enlaces a PDF que devuelven `fund-normative`, `fund-evaluation` y `fund-required-documents` (el campo `url` cuando se envía `pdf_id`, y `pdf_files[].source` en la normativa) son una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde.
 
 
 ## Referencia de endpoints
@@ -71,7 +79,7 @@ Algunas convocatorias tienen más de 1.000 concesiones asociadas (por ejemplo, u
 **Autenticación:** Token de usuario
 
 
-Devuelve el catálogo completo de valores de referencia usados por el resto de endpoints: tipos de solicitante, actividades/sectores, comunidades autónomas y provincias (con provinces anidadas), líneas de crédito, orígenes de fondos, tipos de ayuda, CNAEs, grupos de acción, etc. Cada elemento trae su id, que es el que hay que usar como filtro en los demás endpoints. Los ids devueltos aquí bajo applicants, activities y actions son compatibles con los campos applicants_v2/activities_v2/actions_v2 usados en /funds/ y /funds/concessions/ (mismo espacio de ids, a pesar de la diferencia de nombre). No consume créditos, solo requiere token de usuario.
+Devuelve el catálogo completo de valores de referencia usados por el resto de endpoints: tipos de solicitante, actividades/sectores, comunidades autónomas y provincias (con provinces anidadas), líneas de crédito, orígenes de fondos, tipos de ayuda, CNAEs, grupos de acción, etc. Cada elemento trae su id, que es el que hay que usar como filtro en los demás endpoints. Los ids devueltos aquí bajo applicants, activities y actions son compatibles con los campos applicants_v2/activities_v2/actions_v2 usados en /funds/ (mismo espacio de ids, a pesar de la diferencia de nombre). Las actividades (activities) ya no incluyen su lista de CNAE. El catálogo de CNAE sigue disponible en la lista de primer nivel cnaes, pero está previsto eliminarla en una próxima versión. No consume créditos, solo requiere token de usuario.
 
 
 **Ejemplo de petición:**
@@ -1542,7 +1550,7 @@ curl --request PATCH \
 **Autenticación:** Token de usuario
 
 
-Detalle completo de una convocatoria activa. Acepta como identificador el id numérico o el slug de la convocatoria (el slug se normaliza a minúsculas). Este endpoint solo cubre convocatorias activas: una convocatoria histórica o ya resuelta devuelve 404 aunque el identificador sea válido; para consultar esas, usa /funds/concessions/ o /funds/concessions/beneficiaries*. Para preguntas sobre cómo aumentar las probabilidades de éxito de una solicitud, combina este endpoint con fund-evaluation y fund-required-documents. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
+Detalle completo de una convocatoria activa. Acepta como identificador el id numérico o el slug de la convocatoria (el slug se normaliza a minúsculas). Este endpoint solo cubre convocatorias activas: una convocatoria histórica o ya resuelta devuelve 404 aunque el identificador sea válido; para consultar sus beneficiarios, usa /funds/concessions/beneficiaries/. La respuesta incluye el número e importe total de concesiones (concessions, concessions_amount), si tiene convocatorias relacionadas (related_funds), el origen de los datos (source) y la URL pública de la convocatoria (url), que usa el dominio de la marca con la que se autentica la llamada: usa siempre ese valor en lugar de construirla. Para preguntas sobre cómo aumentar las probabilidades de éxito de una solicitud, combina este endpoint con fund-evaluation y fund-required-documents. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
 
 
 **Parámetros:**
@@ -1583,7 +1591,12 @@ curl --request GET \
   "fund_execution_period": "12 meses desde la fecha de concesión",
   "line": "Programa Kit Digital",
   "extra_limit": 2000,
-  "info_extra": "Convocatoria financiada por el Plan de Recuperación, Transformación y Resiliencia - Next Generation EU"
+  "info_extra": "Convocatoria financiada por el Plan de Recuperación, Transformación y Resiliencia - Next Generation EU",
+  "concessions": 4820,
+  "concessions_amount": 1050000,
+  "related_funds": true,
+  "source": "InfoSubvenciones",
+  "url": "https://fandit.es/subvenciones/detalles-subvencion/5891"
 }
 ```
 
@@ -1603,7 +1616,7 @@ curl --request GET \
 **Autenticación:** Token de usuario
 
 
-Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
+Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Si el NIF no tiene concesiones devuelve 200 con un array vacío. Si falta el NIF devuelve 400 con el error «El NIF es requerido», y si no es válido, 400 con el mensaje de validación. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
 
 
 **Cuerpo de la petición (JSON):**
@@ -1653,8 +1666,8 @@ curl --request POST \
 **Notas de errores específicas de este endpoint:**
 
 
-- `400`: Falta el campo `nif` o no tiene un formato válido.
-- `404`: No hay concesiones de mínimis para ese NIF.
+- `400`: Falta el campo `nif` («El NIF es requerido») o no tiene un formato válido (mensaje de validación).
+- Si el NIF no tiene concesiones de mínimis, la respuesta es `200` con un array vacío (`[]`), no un `404`.
 
 
 
@@ -1666,7 +1679,7 @@ curl --request POST \
 **Autenticación:** Token de usuario
 
 
-Listado de convocatorias activas (active=True) con un amplio sistema de filtros, incluyendo búsqueda semántica vectorizada (search_by_vectorized_text) que puede autocompletar filtros. Si se necesita el total de resultados y la respuesta no cabe en una página, seguir pidiendo páginas siguientes con el parámetro page hasta agotar los resultados (usar count). Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
+Listado de convocatorias activas (active=True) con un amplio sistema de filtros, incluyendo búsqueda semántica vectorizada (search_by_vectorized_text) que puede autocompletar filtros. Si se necesita el total de resultados y la respuesta no cabe en una página, seguir pidiendo páginas siguientes con el parámetro page hasta agotar los resultados (usar count). Para obtener solo convocatorias con concesiones publicadas (lo que antes devolvía /funds/concessions/, ya eliminado) envía with_concessions: true en requestData. Cada resultado incluye el número e importe de concesiones (concessions, concessions_amount), si tiene convocatorias relacionadas (related_funds), el origen de los datos (source) y la URL pública de la convocatoria (url) en el dominio de tu marca; usa siempre ese valor en lugar de construirla. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
 
 
 **Parámetros:**
@@ -1676,6 +1689,7 @@ Listado de convocatorias activas (active=True) con un amplio sistema de filtros,
 |---|---|---|---|---|
 | `requestData` | query | object | No | Objeto de filtros serializado como JSON. Ejemplo: {"provinces":[33],"is_open":true,"sizes":[2],"order":"-total_amount"} |
 | `page` | query | integer | No | Página del listado. Es un parámetro de query independiente, no va dentro de requestData. |
+| `page_size` | query | integer | No | Resultados por página: 20 por defecto, máximo 200. Es un parámetro de query independiente, como page: no va dentro de requestData. |
 
 Campos de `requestData` (Todos los campos son opcionales. Se envía serializado como JSON dentro del query param `requestData` (no como query params individuales). Si `requestData` no se envía, se aplican los valores por defecto (equivale a una búsqueda sin filtros).):
 
@@ -1695,11 +1709,15 @@ Campos de `requestData` (Todos los campos son opcionales. Se envía serializado 
 | `search_by_text` | string | No | Búsqueda de texto literal (coincidencia de palabras en el título). Úsalo para nombres concretos de convocatoria. |
 | `search_by_vectorized_text` | string | No | Búsqueda semántica vía embeddings: encuentra convocatorias relacionadas con una idea aunque no compartan las palabras exactas. Puede autocompletar automáticamente applicants_v2/actions_v2/communities/provinces si vienen vacíos. Al combinarlo con otros filtros estructurados (por ejemplo `is_open`), estos actúan de forma acumulativa: cuanto más específico sea el texto y más restrictivos los filtros adicionales, menos resultados devolverá la búsqueda, pudiendo llegar a cero si ninguna convocatoria cumple todos los criterios a la vez. |
 | `is_open` | boolean | No | Si se indica, filtra solo convocatorias abiertas (true) o no abiertas (false). Para distinguir entre pendientes y cerradas usa `status_code`. |
+| `with_concessions` | boolean | No | Solo convocatorias con al menos una concesión publicada. Por defecto false. Acepta true/"true"/1/"1" como verdadero. |
+| `with_related_funds` | boolean | No | Solo convocatorias con convocatorias relacionadas. Por defecto false. Se combina con with_concessions y con el resto de filtros. Acepta true/"true"/1/"1" como verdadero. |
 | `reviewed` | boolean | No | Acepta true/"true"/1/"1" como verdadero; cualquier otro valor se trata como falso. |
 | `start_date` | string | No | Fecha de apertura, inicio de rango. Formato YYYY-MM-DD. |
 | `end_date` | string | No | Fecha de apertura, fin de rango. Formato YYYY-MM-DD. |
 | `final_period_start_date` | string | No | Fecha de cierre, inicio de rango. Formato YYYY-MM-DD. |
 | `final_period_end_date` | string | No | Fecha de cierre, fin de rango. Formato YYYY-MM-DD. |
+| `update_date_start` | string | No | Fecha de actualización, inicio de rango. Formato YYYY-MM-DD. Devuelve convocatorias con cualquier hito en el rango salvo la apertura del plazo de solicitud (convocatoria general, bases reguladoras, modificación o resolución, creación de fecha de inicio y modificación de fecha). |
+| `update_date_end` | string | No | Fecha de actualización, fin de rango. Formato YYYY-MM-DD. |
 | `platform` | string | No | Slug de plataforma. |
 | `office` | - | No | Filtro de oficina/organismo (int o string). |
 | `bdns` | integer | No | Código BDNS. Debe enviarse como número entero. |
@@ -1741,7 +1759,13 @@ curl --request GET \
       "formatted_title": "Kit Consulting",
       "status_text": "Abierta",
       "new_entity": 1,
-      "total_amount": 12000
+      "total_amount": 12000,
+      "entity": "Ministerio para la Transformación Digital y de la Función Pública",
+      "concessions": 0,
+      "concessions_amount": 0,
+      "related_funds": true,
+      "source": "Sede electrónica",
+      "url": "https://fandit.es/subvenciones/detalles-subvencion/1"
     }
   ]
 }
@@ -1812,108 +1836,12 @@ curl --request POST \
 ---
 
 
-#### Listado de concesiones — `GET /api/v2/funds/concessions/`
-
-**Autenticación:** Token de usuario
-
-
-Listado de fondos con concesiones publicadas (with_concessions=True): ayudas ya resueltas, no convocatorias abiertas en general. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
-
-
-**Parámetros:**
-
-
-| Nombre | Ubicación | Tipo | Obligatorio | Descripción |
-|---|---|---|---|---|
-| `requestData` | query | object | No | Mismo formato que en /funds/, pero solo un subconjunto de los campos tiene efecto aquí (ver descripción de cada campo). |
-| `page` | query | integer | No | Página del listado. Es un parámetro de query independiente, no va dentro de requestData. |
-
-Campos de `requestData` (Todos los campos son opcionales. Se envía serializado como JSON dentro del query param `requestData` (no como query params individuales). Si `requestData` no se envía, se aplican los valores por defecto (equivale a una búsqueda sin filtros). Este endpoint reutiliza el mismo formato requestData que /funds/, pero solo tienen efecto los siguientes campos: actions_v2, activities_v2, applicants_v2, bdns, communities, credit_types, end_date, final_period_end_date, final_period_start_date, max_total_amount, min_total_amount, office, origins, profiles, provinces, region_types, reviewed, search_by_text, sizes, start_date, types. El resto de campos (zip_code, status_code, minimis, min_budget/max_budget, search_by_vectorized_text) se acepta en el JSON pero no se aplica en este endpoint.):
-
-| Campo | Tipo | Obligatorio | Descripción |
-|---|---|---|---|
-| `provinces` | array[integer] | No | IDs de provincia. |
-| `communities` | array[integer] | No | IDs de comunidad autónoma. |
-| `types` | array[integer] | No | IDs de tipo de convocatoria. |
-| `region_types` | array[integer] | No | IDs de ámbito territorial. |
-| `applicants_v2` | array[integer] | No | IDs de tipo de solicitante (mismo espacio de ids que `applicants` en /data-filters/). |
-| `actions_v2` | array[integer] | No | IDs de acción/línea de ayuda (mismo espacio de ids que `actions` en /data-filters/). |
-| `activities_v2` | array[integer] | No | IDs de actividad/sector (mismo espacio de ids que `activities` en /data-filters/). |
-| `origins` | array[integer] | No | IDs de origen de fondos. |
-| `credit_types` | array[integer] | No | IDs de tipo de ayuda. |
-| `sizes` | array[integer] | No | IDs de tamaño de empresa. |
-| `profiles` | array[integer] | No | IDs de perfil de solicitante. |
-| `search_by_text` | string | No | Búsqueda de texto literal (coincidencia de palabras en el título). Úsalo para nombres concretos de convocatoria. |
-| `search_by_vectorized_text` | string | No | Búsqueda semántica vía embeddings: encuentra convocatorias relacionadas con una idea aunque no compartan las palabras exactas. Puede autocompletar automáticamente applicants_v2/actions_v2/communities/provinces si vienen vacíos. Al combinarlo con otros filtros estructurados (por ejemplo `is_open`), estos actúan de forma acumulativa: cuanto más específico sea el texto y más restrictivos los filtros adicionales, menos resultados devolverá la búsqueda, pudiendo llegar a cero si ninguna convocatoria cumple todos los criterios a la vez. |
-| `is_open` | boolean | No | Si se indica, filtra solo convocatorias abiertas (true) o no abiertas (false). Para distinguir entre pendientes y cerradas usa `status_code`. |
-| `reviewed` | boolean | No | Acepta true/"true"/1/"1" como verdadero; cualquier otro valor se trata como falso. |
-| `start_date` | string | No | Fecha de apertura, inicio de rango. Formato YYYY-MM-DD. |
-| `end_date` | string | No | Fecha de apertura, fin de rango. Formato YYYY-MM-DD. |
-| `final_period_start_date` | string | No | Fecha de cierre, inicio de rango. Formato YYYY-MM-DD. |
-| `final_period_end_date` | string | No | Fecha de cierre, fin de rango. Formato YYYY-MM-DD. |
-| `platform` | string | No | Slug de plataforma. |
-| `office` | - | No | Filtro de oficina/organismo (int o string). |
-| `bdns` | integer | No | Código BDNS. Debe enviarse como número entero. |
-| `min_budget` | number | No | Presupuesto de la ayuda, mínimo de rango. |
-| `max_budget` | number | No | Presupuesto de la ayuda, máximo de rango. |
-| `order` | string | No | Atributo por el que ordenar los resultados. Antepón un guion (-) para orden descendente. Valores admitidos: `order_score` (afinidad/relevancia con la búsqueda, valor por defecto), `total_amount` (presupuesto), `start_date`, `end_date`, `final_period_start_date` y `final_period_end_date` (fechas). Ejemplos: `-total_amount` (mayor presupuesto primero), `-end_date` (cierre más próximo primero). |
-| `zip_code` | string | No | Código postal por el que filtrar. |
-| `status_code` | integer | No | Filtro por estado de la convocatoria: `0` = pendiente (aún no abierta), `1` = abierta, `2` = cerrada. Valores: 0, 1, 2. |
-| `minimis` | boolean | No | Filtra por régimen de minimis. |
-| `min_total_amount` | number | No | Importe total de la convocatoria, mínimo de rango. |
-| `max_total_amount` | number | No | Importe total de la convocatoria, máximo de rango. |
-
-
-**Ejemplo de petición:**
-
-
-```bash
-curl --request GET \
-  --url 'https://api.fandit.es/api/v2/funds/concessions/' \
-  --get \
-  --data-urlencode 'page=1' \
-  --data-urlencode 'requestData={"communities":[7],"applicants_v2":[1]}' \
-  --header 'Authorization: Token TU_API_KEY'
-```
-
-
-**Ejemplo de respuesta:**
-
-
-```json
-{
-  "count": 58,
-  "next": null,
-  "previous": null,
-  "results": [
-    {
-      "id": 55,
-      "slug": "adelante-inversion-2025",
-      "formatted_title": "Adelante Inversión",
-      "status_text": "Cerrada",
-      "total_amount": 5000000,
-      "concessions_count": 1266,
-      "concessions_amount": 4980000
-    }
-  ]
-}
-```
-
-
-**Notas de errores específicas de este endpoint:**
-
-
-
-
----
-
-
 #### Concesiones por CIF — `GET /api/v2/funds/concessions/beneficiaries-by-cif/`
 
 **Autenticación:** Token de usuario
 
 
-Devuelve el listado de subvenciones/concesiones recibidas por una empresa concreta, identificada por su NIF/CIF: una fila por cada convocatoria que esa empresa ha recibido (nif fijo, fund_id variable). Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas empresas tienen decenas de concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count).
+Devuelve el listado de subvenciones/concesiones recibidas por una empresa concreta, identificada por su NIF/CIF: una fila por cada convocatoria que esa empresa ha recibido (nif fijo, fund_id variable). Filtra solo por nif: es obligatorio y, si no se envía, devuelve 400 con el error «Es necesario enviar el campo nif». fund_id y fund_slug ya no se admiten aquí y se ignoran: para los beneficiarios de una convocatoria usa /funds/concessions/beneficiaries/. Las filas se ordenan por concession_date descendente y, a igualdad, por id descendente; el orden es estable entre páginas (no repite ni omite filas) y las concesiones sin fecha aparecen primero. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas empresas tienen decenas de concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count) o sube page_size.
 
 
 **Parámetros:**
@@ -1923,6 +1851,7 @@ Devuelve el listado de subvenciones/concesiones recibidas por una empresa concre
 |---|---|---|---|---|
 | `requestData` | query | object | Sí | Ejemplo: {"nif": "B88445358"}. |
 | `page` | query | integer | No | Página del listado. Es un parámetro de query independiente, no va dentro de requestData. |
+| `page_size` | query | integer | No | Filas por página: 500 por defecto, máximo 1000. Es un parámetro de query independiente, como page: no va dentro de requestData. |
 
 Campos de `requestData`:
 
@@ -1954,15 +1883,6 @@ curl --request GET \
   "previous": null,
   "results": [
     {
-      "fund_id": 777794,
-      "fund_slug": "ayudas-del-centro-para-el-desarrollo-tecnologico-y-la-innovacion-epe-para-la-financiacion-de-proyectos-de-id2023",
-      "fund_title": "Ayudas del Centro para el Desarrollo Tecnológico y la Innovación para la financiación de proyectos de I+D en el año 2023.",
-      "beneficiary_cif": "B88445358",
-      "beneficiary_name": "FANDIT POWER SL",
-      "concession_date": "2023-11-30",
-      "awarded_amount": 225206.65
-    },
-    {
       "fund_id": 833338,
       "fund_slug": "subvenciones-dirigidas-al-fomento-de-modernizacion-tecnologica-y-digitalizacion-orientados-a-pymes-2024",
       "fund_title": "Subvenciones dirigidas al fomento de modernización tecnológica y digitalización de las PYMEs, año 2024.",
@@ -1970,6 +1890,15 @@ curl --request GET \
       "beneficiary_name": "FANDIT POWER SL . .",
       "concession_date": "2024-12-10",
       "awarded_amount": 50000
+    },
+    {
+      "fund_id": 777794,
+      "fund_slug": "ayudas-del-centro-para-el-desarrollo-tecnologico-y-la-innovacion-epe-para-la-financiacion-de-proyectos-de-id2023",
+      "fund_title": "Ayudas del Centro para el Desarrollo Tecnológico y la Innovación para la financiación de proyectos de I+D en el año 2023.",
+      "beneficiary_cif": "B88445358",
+      "beneficiary_name": "FANDIT POWER SL",
+      "concession_date": "2023-11-30",
+      "awarded_amount": 225206.65
     }
   ]
 }
@@ -1979,7 +1908,7 @@ curl --request GET \
 **Notas de errores específicas de este endpoint:**
 
 
-- `400`: requestData inválido o no se envió nif.
+- `400`: requestData inválido o no se envió nif («Es necesario enviar el campo nif»). `fund_id` y `fund_slug` no se admiten aquí y se ignoran.
 
 
 
@@ -1991,7 +1920,7 @@ curl --request GET \
 **Autenticación:** Token de usuario
 
 
-Devuelve el listado de beneficiarios de una convocatoria concreta, identificada por fund_id o fund_slug: una fila por cada empresa que ha recibido esa convocatoria (fund_id fijo, beneficiario variable). Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas convocatorias tienen más de 1000 concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count).
+Devuelve el listado de beneficiarios de una convocatoria concreta, identificada por fund_id o fund_slug: una fila por cada empresa que ha recibido esa convocatoria (fund_id fijo, beneficiario variable). Filtra solo por convocatoria: si no se envía fund_id ni fund_slug devuelve 400 con el error «Es necesario enviar el campo fund_id o el campo fund_slug». El filtro nif ya no se admite aquí y se ignora: para las concesiones de una empresa usa /funds/concessions/beneficiaries-by-cif/. Las filas ya no incluyen fund_slug ni fund_title: si los necesitas, pídelos una vez a fund-details con el id de la convocatoria. Las filas se ordenan por concession_date descendente y, a igualdad, por id descendente; el orden es estable entre páginas (no repite ni omite filas) y las concesiones sin fecha aparecen primero. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas convocatorias tienen más de 1000 concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count).
 
 
 **Parámetros:**
@@ -2001,13 +1930,14 @@ Devuelve el listado de beneficiarios de una convocatoria concreta, identificada 
 |---|---|---|---|---|
 | `requestData` | query | object | Sí | Ejemplo: {"fund_id": 916430}. Admite fund_id o fund_slug (no combinar ambos). |
 | `page` | query | integer | No | Página del listado. Es un parámetro de query independiente, no va dentro de requestData. |
+| `page_size` | query | integer | No | Filas por página: 500 por defecto, máximo 1000. Es un parámetro de query independiente, como page: no va dentro de requestData. |
 
 Campos de `requestData`:
 
 | Campo | Tipo | Obligatorio | Descripción |
 |---|---|---|---|
-| `fund_id` | integer | No | Id de la convocatoria. No combinar con fund_slug. |
-| `fund_slug` | string | No | Slug de la convocatoria. No combinar con fund_id. |
+| `fund_id` | integer | No | Id de la convocatoria. No combinar con fund_slug. Hay que enviar fund_id o fund_slug. |
+| `fund_slug` | string | No | Slug de la convocatoria. No combinar con fund_id. Hay que enviar fund_id o fund_slug. |
 
 
 **Ejemplo de petición:**
@@ -2034,8 +1964,6 @@ curl --request GET \
   "results": [
     {
       "fund_id": 916430,
-      "fund_slug": "ayudas-destinadas-a-nuevos-proyectos-empresariales-de-empresas-innovadora-programa-neotec-2025",
-      "fund_title": "Ayudas destinadas a nuevos proyectos empresariales de empresas innovadora. Programa NEOTEC 2025.",
       "beneficiary_cif": "B44562163",
       "beneficiary_name": "EXXN ENGINEERING AI AND TELECOM SL",
       "concession_date": "2025-12-22",
@@ -2043,8 +1971,6 @@ curl --request GET \
     },
     {
       "fund_id": 916430,
-      "fund_slug": "ayudas-destinadas-a-nuevos-proyectos-empresariales-de-empresas-innovadora-programa-neotec-2025",
-      "fund_title": "Ayudas destinadas a nuevos proyectos empresariales de empresas innovadora. Programa NEOTEC 2025.",
       "beneficiary_cif": "B72486095",
       "beneficiary_name": "MUSE SCENE LAB SL",
       "concession_date": "2025-12-22",
@@ -2058,7 +1984,7 @@ curl --request GET \
 **Notas de errores específicas de este endpoint:**
 
 
-- `400`: requestData inválido o no se envió fund_id ni fund_slug.
+- `400`: requestData inválido o no se envió fund_id ni fund_slug («Es necesario enviar el campo fund_id o el campo fund_slug»). El filtro `nif` no se admite aquí y se ignora.
 
 
 
@@ -2070,7 +1996,7 @@ curl --request GET \
 **Autenticación:** Token de usuario
 
 
-Devuelve los criterios de evaluación de la convocatoria (requisitos y si está sujeta a régimen de minimis). Consultar siempre que se pregunte cómo aumentar probabilidades de éxito, qué se valora o cómo preparar mejor una solicitud, aunque no se mencione explícitamente "evaluación". Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
+Devuelve los criterios de evaluación de la convocatoria (requisitos y si está sujeta a régimen de minimis). Consultar siempre que se pregunte cómo aumentar probabilidades de éxito, qué se valora o cómo preparar mejor una solicitud, aunque no se mencione explícitamente "evaluación". Con el parámetro pdf_id, el campo url es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
 
 
 **Parámetros:**
@@ -2079,6 +2005,7 @@ Devuelve los criterios de evaluación de la convocatoria (requisitos y si está 
 | Nombre | Ubicación | Tipo | Obligatorio | Descripción |
 |---|---|---|---|---|
 | `id` | path | integer | Sí | Id de la convocatoria. |
+| `pdf_id` | query | integer | No | Id de un PDF de la convocatoria. Si se envía, la respuesta incluye el campo url con la URL firmada de ese PDF. |
 
 
 **Ejemplo de petición:**
@@ -2118,7 +2045,7 @@ curl --request GET \
 **Autenticación:** Token de usuario
 
 
-Devuelve el listado de normativa disponible: enlaces, PDFs (cada uno con su URL directa y metadatos de clasificación), si es competitiva/no competitiva/minimis, BDNS. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
+Devuelve el listado de normativa disponible: enlaces, PDFs (cada uno con su URL directa y metadatos de clasificación), si es competitiva/no competitiva/minimis, BDNS. Si se envía el parámetro opcional pdf_id, devuelve los metadatos y la url de ese PDF en concreto en vez del detalle normativo. Cada enlace a PDF (url con pdf_id, pdf_files[].source sin pdf_id) es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
 
 
 **Parámetros:**
@@ -2127,6 +2054,7 @@ Devuelve el listado de normativa disponible: enlaces, PDFs (cada uno con su URL 
 | Nombre | Ubicación | Tipo | Obligatorio | Descripción |
 |---|---|---|---|---|
 | `id` | path | integer | Sí | Id de la convocatoria. |
+| `pdf_id` | query | integer | No | Id de un PDF de pdf_files. Si se envía, la respuesta son los metadatos y la url de ese PDF en vez del detalle normativo. |
 
 
 **Ejemplo de petición:**
@@ -2156,7 +2084,7 @@ curl --request GET \
       "document_type": "Bases reguladoras",
       "coincidence_category": "Múltiple",
       "coincidence_percent": 0.95,
-      "source": "https://s3.eu-west-1.amazonaws.com/media.fandit.es/files/bases_reguladoras_kit_digital_iii.pdf"
+      "source": "https://s3.eu-west-1.amazonaws.com/media.fandit.es/files/bases_reguladoras_kit_digital_iii.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=..."
     },
     {
       "id": 5024,
@@ -2166,7 +2094,7 @@ curl --request GET \
       "document_type": "Modificaciones",
       "coincidence_category": "Múltiple",
       "coincidence_percent": 0.85,
-      "source": "https://s3.eu-west-1.amazonaws.com/media.fandit.es/files/modificacion_bases_kit_digital_iii.pdf"
+      "source": "https://s3.eu-west-1.amazonaws.com/media.fandit.es/files/modificacion_bases_kit_digital_iii.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=..."
     }
   ],
   "has_link": true,
@@ -2177,6 +2105,19 @@ curl --request GET \
   "competitiva": false,
   "no_competitiva": true,
   "minimis": false
+}
+```
+
+
+**Ejemplo de respuesta con `pdf_id`** (`GET /api/v2/funds/fund-normative/5891/?pdf_id=5023`):
+
+
+```json
+{
+  "id": 5023,
+  "title": "Bases reguladoras Kit Digital Segmento III",
+  "primary": true,
+  "url": "https://s3.eu-west-1.amazonaws.com/media.fandit.es/files/bases_reguladoras_kit_digital_iii.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=..."
 }
 ```
 
@@ -2196,7 +2137,7 @@ curl --request GET \
 **Autenticación:** Token de usuario
 
 
-Devuelve el historial de ediciones anteriores de la misma ayuda, sin paginar. Cada elemento incluye el campo previous con el id de la edición inmediatamente anterior, lo que permite seguir recorriendo el historial hacia atrás si se necesita. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
+Devuelve las convocatorias relacionadas con una convocatoria (otras ediciones de la misma ayuda), sin paginar. Usa id para consultar el detalle de cada convocatoria relacionada y url para enlazarla. previous tiene el mismo valor que id y se mantiene solo por compatibilidad. total_amount y concessions_amount vienen redondeados a 2 decimales. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
 
 
 **Parámetros:**
@@ -2223,14 +2164,16 @@ curl --request GET \
 ```json
 [
   {
+    "id": 916430,
+    "url": "https://fandit.es/subvenciones/detalles-subvencion/916430",
     "register_date": "2025-05-02",
     "slug": "ayudas-destinadas-a-nuevos-proyectos-empresariales-de-empresas-innovadora-programa-neotec-2025",
     "cleaned_title": "Ayudas destinadas a nuevos proyectos empresariales de empresas innovadora. Programa NEOTEC 2025.",
     "status_text": "Apertura el 12/05/2025 y cierre el 12/06/2025",
-    "total_amount": 40000000.0,
+    "total_amount": 40000000.00,
     "fund_scope": "Estatal",
     "concessions_count": 130,
-    "concessions_amount": 39999999.99999999,
+    "concessions_amount": 40000000.00,
     "entity": "ESTADO",
     "department": "MINISTERIO DE CIENCIA, INNOVACIÓN Y UNIVERSIDADES",
     "office": "CENTRO PARA EL DESARROLLO TECNOLÓGICO Y LA INNOVACIÓN (CDTI)",
@@ -2238,14 +2181,16 @@ curl --request GET \
     "previous": 916430
   },
   {
+    "id": 838550,
+    "url": "https://fandit.es/subvenciones/detalles-subvencion/838550",
     "register_date": "2024-04-04",
     "slug": "ayudas-para-startups-tecnologicas-innovadoras-del-programa-neotec-ano-2024",
     "cleaned_title": "Ayudas destinadas a nuevos proyectos empresariales de empresas innovadora. Programa NEOTEC 2024.",
     "status_text": "Apertura el 10/04/2024 y cierre el 10/05/2024",
-    "total_amount": 20000000.0,
+    "total_amount": 20000000.00,
     "fund_scope": "Estatal",
     "concessions_count": 64,
-    "concessions_amount": 20000000.0,
+    "concessions_amount": 20000000.00,
     "entity": "ESTADO",
     "department": "MINISTERIO DE CIENCIA, INNOVACIÓN Y UNIVERSIDADES",
     "office": "CENTRO PARA EL DESARROLLO TECNOLÓGICO Y LA INNOVACIÓN (CDTI)",
@@ -2269,7 +2214,7 @@ curl --request GET \
 **Autenticación:** Token de usuario
 
 
-Devuelve la documentación requerida para solicitar la convocatoria. Combinar con fund-evaluation cuando se pregunte por estrategia de éxito: sin la documentación correcta ni siquiera se evalúa la solicitud. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
+Devuelve la documentación requerida para solicitar la convocatoria. Combinar con fund-evaluation cuando se pregunte por estrategia de éxito: sin la documentación correcta ni siquiera se evalúa la solicitud. Con el parámetro pdf_id, el campo url es una URL firmada de S3 que caduca (1 hora por defecto): descarga el PDF en el momento o vuelve a pedir la URL, no la guardes para más tarde. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
 
 
 **Parámetros:**
@@ -2278,6 +2223,7 @@ Devuelve la documentación requerida para solicitar la convocatoria. Combinar co
 | Nombre | Ubicación | Tipo | Obligatorio | Descripción |
 |---|---|---|---|---|
 | `id` | path | integer | Sí | Id de la convocatoria. |
+| `pdf_id` | query | integer | No | Id de un PDF de la convocatoria. Si se envía, la respuesta incluye el campo url con la URL firmada de ese PDF. |
 
 
 **Ejemplo de petición:**
@@ -3901,13 +3847,14 @@ curl --request PATCH \
 | Traducir un filtro en texto libre a un id numérico | `GET /data-filters/` (o dejar que `GET /funds/` lo infiera vía `search_by_vectorized_text`) |
 | Explorar o filtrar el catálogo general de convocatorias abiertas | `GET /funds/` |
 | Ver el detalle completo de una convocatoria activa concreta | `GET /fund-details/{identifier}/` (id o slug) |
-| Ver convocatorias ya resueltas / con concesiones publicadas | `GET /funds/concessions/` |
+| Ver convocatorias ya resueltas / con concesiones publicadas | `GET /funds/` con `with_concessions: true` en `requestData` |
 | Ver qué ayudas ha recibido una empresa concreta (por CIF) | `GET /funds/concessions/beneficiaries-by-cif/` con `nif` |
 | Ver quién recibió una convocatoria concreta | `GET /funds/concessions/beneficiaries/` con `fund_id`/`fund_slug` |
 | Saber cuánto ha recibido una empresa en régimen de mínimis | `POST /fund-minimis-by-nif/` con `nif` |
 | Ver la normativa/documentación legal de una convocatoria | `GET /funds/fund-normative/{id}/` |
 | Saber cómo se evalúan las solicitudes | `GET /funds/fund-evaluation/{id}/` |
-| Ver ediciones anteriores de la misma ayuda | `GET /funds/fund-related/{id}/` |
+| Ver convocatorias relacionadas (otras ediciones de la misma ayuda) | `GET /funds/fund-related/{id}/`, o `GET /funds/` con `with_related_funds: true` para listar solo las que tienen |
+| Enlazar una convocatoria en tu web o tu producto | El campo `url` de la respuesta, sin construir la URL a mano |
 | Saber qué documentación hay que aportar | `GET /funds/fund-required-documents/{id}/` |
 | Responder una pregunta abierta sobre una convocatoria concreta | `POST /funds/chatbot/` |
 | Evaluar estrategia / probabilidad de éxito de una solicitud | Combinar `fund-evaluation` **+** `fund-required-documents`, no solo el detalle |
