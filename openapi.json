@@ -4622,7 +4622,7 @@
         ],
         "summary": "Ayudas de mínimis por NIF",
         "operationId": "v2_funds_minimis_by_nif",
-        "description": "Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Si el NIF no tiene concesiones devuelve 200 con un array vacío. Si falta el NIF devuelve 400 con el error «El NIF es requerido», y si no es válido, 400 con el mensaje de validación. Los datos se consultan en tiempo real en BDNS (infosubvenciones.es): si BDNS no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON, devuelve 502 con {\"error\": \"No se ha podido consultar BDNS, inténtalo más tarde\"}. Un 502 es un fallo temporal del servicio externo, no significa que el NIF no tenga ayudas de mínimis: no lo trates como un array vacío y reintenta más tarde. En el peor caso la respuesta puede tardar unos 30 s (dos llamadas a BDNS de hasta 15 s cada una), así que usa un timeout de cliente mayor. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
+        "description": "Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Si el NIF no tiene concesiones devuelve 200 con un array vacío. Si falta el NIF devuelve 400 con el error «El NIF es requerido», y si no es válido, 400 con el mensaje de validación. Cada concesión incluye concession_id (identificador único de la concesión en BDNS), concession_code (código público, p. ej. SB137062769), registration_date (fecha de registro en BDNS) e instrument (tipo de ayuda: subvención, préstamo, garantía…). Usa concession_id para no contar duplicados al sumar el total de mínimis: dos filas con el mismo concession_id son la misma concesión y cuentan una vez; con ids distintos son concesiones reales y cuentan todas, aunque coincidan convocatoria, fecha e importe. concession_amount es la ayuda equivalente concedida, también en préstamos y garantías. Si BDNS no envía algún campo (por ejemplo activity), sale null. Los datos se consultan en tiempo real en BDNS (infosubvenciones.es): si BDNS no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON, devuelve 502 con {\"error\": \"No se ha podido consultar BDNS, inténtalo más tarde\"}. Un 502 es un fallo temporal del servicio externo, no significa que el NIF no tenga ayudas de mínimis: no lo trates como un array vacío y reintenta más tarde. En el peor caso la respuesta puede tardar unos 30 s (dos llamadas a BDNS de hasta 15 s cada una), así que usa un timeout de cliente mayor. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
         "security": [
           {
             "UserTokenAuth": []
@@ -4682,11 +4682,33 @@
                       },
                       "activity": {
                         "type": "string",
-                        "description": "Actividad económica del beneficiario.",
+                        "description": "Sector de actividad. Puede ser null si BDNS no lo publica.",
                         "nullable": true
                       },
                       "concession_amount": {
                         "type": "number",
+                        "nullable": true,
+                        "description": "Ayuda equivalente concedida (también en préstamos y garantías)."
+                      },
+                      "concession_id": {
+                        "type": "integer",
+                        "description": "Identificador único de la concesión en BDNS. Es la clave para no contar duplicados al sumar el total de mínimis.",
+                        "nullable": true
+                      },
+                      "concession_code": {
+                        "type": "string",
+                        "description": "Código público de la concesión (p. ej. SB137062769).",
+                        "nullable": true
+                      },
+                      "registration_date": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Fecha de registro de la concesión en BDNS.",
+                        "nullable": true
+                      },
+                      "instrument": {
+                        "type": "string",
+                        "description": "Tipo de ayuda (subvención, préstamo, garantía…).",
                         "nullable": true
                       }
                     }
@@ -4699,7 +4721,11 @@
                     "minimis": "REG (UE) 2023/2831 de minimis, General",
                     "concession_date": "2025-05-12",
                     "activity": "62 - Programación, consultoría y otras actividades relacionadas con la informática",
-                    "concession_amount": 9500
+                    "concession_amount": 9500,
+                    "concession_id": 118734521,
+                    "concession_code": "SB118734521",
+                    "registration_date": "2025-05-20",
+                    "instrument": "SUBVENCIÓN y ENTREGA DINERARIA SIN CONTRAPRESTACIÓN"
                   },
                   {
                     "bdns": "748908",
@@ -4707,7 +4733,11 @@
                     "minimis": "REG (UE) 2023/2831 de minimis, General",
                     "concession_date": "2024-12-10",
                     "activity": "H - TRANSPORTE Y ALMACENAMIENTO; T - OTROS SERVICIOS",
-                    "concession_amount": 50000
+                    "concession_amount": 50000,
+                    "concession_id": 104562387,
+                    "concession_code": "SB104562387",
+                    "registration_date": "2024-12-18",
+                    "instrument": "SUBVENCIÓN y ENTREGA DINERARIA SIN CONTRAPRESTACIÓN"
                   }
                 ]
               }

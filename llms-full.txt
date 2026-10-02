@@ -1616,7 +1616,7 @@ curl --request GET \
 **Autenticación:** Token de usuario
 
 
-Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Si el NIF no tiene concesiones devuelve 200 con un array vacío. Si falta el NIF devuelve 400 con el error «El NIF es requerido», y si no es válido, 400 con el mensaje de validación. Los datos se consultan en tiempo real en BDNS (infosubvenciones.es): si BDNS no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON, devuelve 502 con {"error": "No se ha podido consultar BDNS, inténtalo más tarde"}. Un 502 es un fallo temporal del servicio externo, no significa que el NIF no tenga ayudas de mínimis: no lo trates como un array vacío y reintenta más tarde. En el peor caso la respuesta puede tardar unos 30 s (dos llamadas a BDNS de hasta 15 s cada una), así que usa un timeout de cliente mayor. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
+Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Si el NIF no tiene concesiones devuelve 200 con un array vacío. Si falta el NIF devuelve 400 con el error «El NIF es requerido», y si no es válido, 400 con el mensaje de validación. Cada concesión incluye concession_id (identificador único de la concesión en BDNS), concession_code (código público, p. ej. SB137062769), registration_date (fecha de registro en BDNS) e instrument (tipo de ayuda: subvención, préstamo, garantía…). Usa concession_id para no contar duplicados al sumar el total de mínimis: dos filas con el mismo concession_id son la misma concesión y cuentan una vez; con ids distintos son concesiones reales y cuentan todas, aunque coincidan convocatoria, fecha e importe. concession_amount es la ayuda equivalente concedida, también en préstamos y garantías. Si BDNS no envía algún campo (por ejemplo activity), sale null. Los datos se consultan en tiempo real en BDNS (infosubvenciones.es): si BDNS no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON, devuelve 502 con {"error": "No se ha podido consultar BDNS, inténtalo más tarde"}. Un 502 es un fallo temporal del servicio externo, no significa que el NIF no tenga ayudas de mínimis: no lo trates como un array vacío y reintenta más tarde. En el peor caso la respuesta puede tardar unos 30 s (dos llamadas a BDNS de hasta 15 s cada una), así que usa un timeout de cliente mayor. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
 
 
 **Cuerpo de la petición (JSON):**
@@ -1649,7 +1649,11 @@ curl --request POST \
     "minimis": "REG (UE) 2023/2831 de minimis, General",
     "concession_date": "2025-05-12",
     "activity": "62 - Programación, consultoría y otras actividades relacionadas con la informática",
-    "concession_amount": 9500.0
+    "concession_amount": 9500.0,
+    "concession_id": 118734521,
+    "concession_code": "SB118734521",
+    "registration_date": "2025-05-20",
+    "instrument": "SUBVENCIÓN y ENTREGA DINERARIA SIN CONTRAPRESTACIÓN"
   },
   {
     "bdns": "748908",
@@ -1657,10 +1661,35 @@ curl --request POST \
     "minimis": "REG (UE) 2023/2831 de minimis, General",
     "concession_date": "2024-12-10",
     "activity": "H - TRANSPORTE Y ALMACENAMIENTO; T - OTROS SERVICIOS",
-    "concession_amount": 50000.0
+    "concession_amount": 50000.0,
+    "concession_id": 104562387,
+    "concession_code": "SB104562387",
+    "registration_date": "2024-12-18",
+    "instrument": "SUBVENCIÓN y ENTREGA DINERARIA SIN CONTRAPRESTACIÓN"
   }
 ]
 ```
+
+
+**Campos de cada elemento de la respuesta:**
+
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `bdns` | string \| null | Número de convocatoria BDNS. |
+| `organs` | string \| null | Órgano convocante. |
+| `minimis` | string \| null | Reglamento de mínimis aplicado. |
+| `concession_date` | date \| null | Fecha de concesión (`YYYY-MM-DD`). |
+| `activity` | string \| null | Sector de actividad. Puede ser `null` si BDNS no lo publica. |
+| `concession_amount` | number \| null | Ayuda equivalente concedida (también en préstamos y garantías). |
+| `concession_id` | integer \| null | Identificador único de la concesión en BDNS. Es la clave para no contar duplicados. |
+| `concession_code` | string \| null | Código público de la concesión (p. ej. `SB137062769`). |
+| `registration_date` | date \| null | Fecha de registro de la concesión en BDNS (`YYYY-MM-DD`). |
+| `instrument` | string \| null | Tipo de ayuda (subvención, préstamo, garantía…). |
+
+Si BDNS no envía algún campo, sale `null`.
+
+**Cómo calcular el total de mínimis recibido:** suma `concession_amount` sin repetir ningún `concession_id`. Dos filas con el mismo `concession_id` son un duplicado y cuentan una vez; si los ids son distintos, son concesiones reales y cuentan todas, aunque coincidan convocatoria, fecha e importe.
 
 
 **Notas de errores específicas de este endpoint:**
