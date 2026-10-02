@@ -4622,7 +4622,7 @@
         ],
         "summary": "Ayudas de mínimis por NIF",
         "operationId": "v2_funds_minimis_by_nif",
-        "description": "Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Si el NIF no tiene concesiones devuelve 200 con un array vacío. Si falta el NIF devuelve 400 con el error «El NIF es requerido», y si no es válido, 400 con el mensaje de validación. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
+        "description": "Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Si el NIF no tiene concesiones devuelve 200 con un array vacío. Si falta el NIF devuelve 400 con el error «El NIF es requerido», y si no es válido, 400 con el mensaje de validación. Los datos se consultan en tiempo real en BDNS (infosubvenciones.es): si BDNS no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON, devuelve 502 con {\"error\": \"No se ha podido consultar BDNS, inténtalo más tarde\"}. Un 502 es un fallo temporal del servicio externo, no significa que el NIF no tenga ayudas de mínimis: no lo trates como un array vacío y reintenta más tarde. En el peor caso la respuesta puede tardar unos 30 s (dos llamadas a BDNS de hasta 15 s cada una), así que usa un timeout de cliente mayor. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
         "security": [
           {
             "UserTokenAuth": []
@@ -4715,6 +4715,24 @@
           },
           "400": {
             "description": "Falta el campo nif («El NIF es requerido») o no tiene un formato válido (mensaje de validación)."
+          },
+          "502": {
+            "description": "No se ha podido consultar BDNS (no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON). Fallo temporal: reintentar más tarde; no equivale a un array vacío.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "error": "No se ha podido consultar BDNS, inténtalo más tarde"
+                }
+              }
+            }
           },
           "401": {
             "description": "Falta la cabecera Authorization o el token no es válido."
@@ -5179,7 +5197,7 @@
         ],
         "summary": "Concesiones por CIF",
         "operationId": "v2_funds_concessions_beficiaries_list",
-        "description": "Devuelve el listado de subvenciones/concesiones recibidas por una empresa concreta, identificada por su NIF/CIF: una fila por cada convocatoria que esa empresa ha recibido (nif fijo, fund_id variable). Filtra solo por nif: es obligatorio y, si no se envía, devuelve 400 con el error «Es necesario enviar el campo nif». fund_id y fund_slug ya no se admiten aquí y se ignoran: para los beneficiarios de una convocatoria usa /funds/concessions/beneficiaries/. Las filas se ordenan por concession_date descendente y, a igualdad, por id descendente; el orden es estable entre páginas (no repite ni omite filas) y las concesiones sin fecha aparecen primero. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas empresas tienen decenas de concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count) o sube page_size.",
+        "description": "Devuelve el listado de subvenciones/concesiones recibidas por una empresa concreta, identificada por su NIF/CIF: una fila por cada convocatoria que esa empresa ha recibido (nif fijo, fund_id variable). Filtra solo por nif: es obligatorio y, si no se envía, devuelve 400 con el error «Es necesario enviar el campo nif». fund_id y fund_slug ya no se admiten aquí y se ignoran: para los beneficiarios de una convocatoria usa /funds/concessions/beneficiaries/. Las filas se ordenan por concession_date descendente y, a igualdad, por id descendente; el orden es estable entre páginas (no repite ni omite filas) y las concesiones sin fecha aparecen primero. Las filas no incluyen fund_slug ni beneficiary_cif: identifica la convocatoria con fund_id (su URL pública es el campo url de /fund-details/{fund_id}/) y el CIF es siempre el nif enviado en la petición. beneficiary_name puede variar ligeramente entre filas según cómo lo publique BDNS. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación. Algunas empresas tienen decenas de concesiones asociadas: si necesitas el total, sigue pidiendo páginas siguientes con page hasta agotar los resultados (usa count) o sube page_size.",
         "security": [
           {
             "UserTokenAuth": []
@@ -5252,13 +5270,15 @@
                         "type": "object",
                         "properties": {
                           "fund_id": {
-                            "type": "integer"
+                            "type": "integer",
+                            "description": "Id de la convocatoria. Úsalo para identificarla o enlazarla (la URL pública es el campo url de /fund-details/{fund_id}/)."
                           },
-                          "beneficiary_cif": {
+                          "fund_title": {
                             "type": "string"
                           },
                           "beneficiary_name": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "Nombre del beneficiario tal como lo publica BDNS; puede variar ligeramente entre filas."
                           },
                           "concession_date": {
                             "type": "string",
@@ -5272,6 +5292,27 @@
                       }
                     }
                   }
+                },
+                "example": {
+                  "count": 15,
+                  "next": null,
+                  "previous": null,
+                  "results": [
+                    {
+                      "fund_id": 833338,
+                      "fund_title": "Subvenciones dirigidas al fomento de modernización tecnológica y digitalización de las PYMEs, año 2024.",
+                      "beneficiary_name": "FANDIT POWER SL . .",
+                      "concession_date": "2024-12-10",
+                      "awarded_amount": 50000
+                    },
+                    {
+                      "fund_id": 777794,
+                      "fund_title": "Ayudas del Centro para el Desarrollo Tecnológico y la Innovación para la financiación de proyectos de I+D en el año 2023.",
+                      "beneficiary_name": "FANDIT POWER SL",
+                      "concession_date": "2023-11-30",
+                      "awarded_amount": 225206.65
+                    }
+                  ]
                 }
               }
             }
