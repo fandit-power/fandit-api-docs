@@ -6,7 +6,7 @@ Especificación OpenAPI y documentación técnica de la API REST de [FANDIT](htt
 
 | Archivo | Descripción |
 |---|---|
-| [`openapi.yaml`](./openapi.yaml) / [`openapi.json`](./openapi.json) | Especificación OpenAPI 3.0.3 completa: 45 endpoints, parámetros, cuerpos de petición, respuestas y esquemas de autenticación. |
+| [`openapi.yaml`](./openapi.yaml) / [`openapi.json`](./openapi.json) | Especificación OpenAPI 3.0.3 completa: 46 endpoints, parámetros, cuerpos de petición, respuestas y esquemas de autenticación. |
 | [`llms-full.txt`](./llms-full.txt) | Documentación técnica completa en un único archivo continuo (autenticación, paginación, manejo de errores y referencia de cada endpoint con ejemplos reales de petición/respuesta). Pensado para ser leído de un tirón por un LLM o agente, sin depender de navegación entre páginas. |
 | [`swagger-ui.html`](./swagger-ui.html) | Visor interactivo de la API (Swagger UI) con el spec ya incrustado. Disponible online en [https://fandit-power.github.io/fandit-api-docs/swagger-ui.html](https://fandit-power.github.io/fandit-api-docs/swagger-ui.html); también se puede abrir directamente haciendo doble clic, sin necesidad de servidor. |
 
@@ -40,6 +40,9 @@ npx @redocly/cli lint openapi.yaml
 - **Paginación**: los parámetros `page` y `page_size` siempre van como query params independientes, nunca dentro del JSON de `requestData`.
 - **Concesiones**: `GET /funds/concessions/` ya no existe; para listar solo convocatorias con concesiones usa `GET /funds/` con `with_concessions: true` en `requestData`.
 - **`requestData`**: varios endpoints (listado de subvenciones y concesiones por CIF o por convocatoria) reciben sus filtros serializados como JSON dentro de un único query param llamado `requestData`, en lugar de query params individuales.
+- **Fechas en `GET /funds/`**: formato `aaaa-mm-dd` (otro formato devuelve `400`). Solo `start_date`, sin `end_date`, filtra **un único día**; para «desde X hasta hoy», envía también `end_date` con la fecha de hoy.
+- **Mínimis por NIF**: los errores traen un `code` estable (`nif_required`, `invalid_nif`, `bdns_unavailable`). Solo un `200` con `[]` significa «sin mínimis registrados».
+- **Catálogo de filtros**: `GET /search-filters/` devuelve los filtros de `GET /funds/` por categoría, con el `param_name` que hay que enviar en `requestData`. `GET /data-filters/` sigue disponible sin cambios.
 
 Para el detalle completo de cada endpoint, parámetros y ejemplos reales, consulta [`llms-full.txt`](./llms-full.txt).
 

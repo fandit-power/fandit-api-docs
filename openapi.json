@@ -1804,7 +1804,7 @@
         ],
         "summary": "Filtros generales",
         "operationId": "data_filters",
-        "description": "Devuelve el catálogo completo de valores de referencia usados por el resto de endpoints: tipos de solicitante, actividades/sectores, comunidades autónomas y provincias (con provinces anidadas), líneas de crédito, orígenes de fondos, tipos de ayuda, CNAEs, grupos de acción, etc. Cada elemento trae su id, que es el que hay que usar como filtro en los demás endpoints. Los ids devueltos aquí bajo applicants, activities y actions son compatibles con los campos applicants_v2/activities_v2/actions_v2 usados en /funds/ (mismo espacio de ids, a pesar de la diferencia de nombre). Las actividades (activities) ya no incluyen su lista de CNAE. El catálogo de CNAE sigue disponible en la lista de primer nivel cnaes, pero está previsto eliminarla en una próxima versión. No consume créditos, solo requiere token de usuario.",
+        "description": "Devuelve el catálogo completo de valores de referencia usados por el resto de endpoints: tipos de solicitante, actividades/sectores, comunidades autónomas y provincias (con provinces anidadas), líneas de crédito, orígenes de fondos, tipos de ayuda, CNAEs, grupos de acción, etc. Cada elemento trae su id, que es el que hay que usar como filtro en los demás endpoints. Los ids devueltos aquí bajo applicants, activities y actions son compatibles con los campos applicants_v2/activities_v2/actions_v2 usados en /funds/ (mismo espacio de ids, a pesar de la diferencia de nombre). Las actividades (activities) ya no incluyen su lista de CNAE. El catálogo de CNAE sigue disponible en la lista de primer nivel cnaes, pero está previsto eliminarla en una próxima versión. Para un catálogo más ligero, con todos los elementos como {id, name}, los grupos de acciones (action_groups), los estados (status_code) y el nombre del parámetro de /funds/ de cada categoría, usa GET /api/v2/search-filters/. No consume créditos, solo requiere token de usuario.",
         "security": [
           {
             "UserTokenAuth": []
@@ -4622,7 +4622,7 @@
         ],
         "summary": "Ayudas de mínimis por NIF",
         "operationId": "v2_funds_minimis_by_nif",
-        "description": "Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Si el NIF no tiene concesiones devuelve 200 con un array vacío. Si falta el NIF devuelve 400 con el error «El NIF es requerido», y si no es válido, 400 con el mensaje de validación. Cada concesión incluye concession_id (identificador único de la concesión en BDNS), concession_code (código público, p. ej. SB137062769), registration_date (fecha de registro en BDNS) e instrument (tipo de ayuda: subvención, préstamo, garantía…). Usa concession_id para no contar duplicados al sumar el total de mínimis: dos filas con el mismo concession_id son la misma concesión y cuentan una vez; con ids distintos son concesiones reales y cuentan todas, aunque coincidan convocatoria, fecha e importe. concession_amount es la ayuda equivalente concedida, también en préstamos y garantías. Si BDNS no envía algún campo (por ejemplo activity), sale null. Los datos se consultan en tiempo real en BDNS (infosubvenciones.es): si BDNS no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON, devuelve 502 con {\"error\": \"No se ha podido consultar BDNS, inténtalo más tarde\"}. Un 502 es un fallo temporal del servicio externo, no significa que el NIF no tenga ayudas de mínimis: no lo trates como un array vacío y reintenta más tarde. En el peor caso la respuesta puede tardar unos 30 s (dos llamadas a BDNS de hasta 15 s cada una), así que usa un timeout de cliente mayor. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
+        "description": "Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Si el NIF no tiene concesiones devuelve 200 con un array vacío. Antes de consultar BDNS se valida el NIF: formato, longitud y dígito o letra de control de DNI, NIE (X/Y/Z), NIF K/L/M y CIF. Los errores devuelven un objeto {\"error\": \"...\", \"code\": \"...\"} con un code estable: 400 nif_required si falta el NIF, 400 invalid_nif si el formato, la longitud o el dígito de control no son válidos (el texto de error varía según el fallo) y 502 bdns_unavailable si BDNS falla. Decide según code, no según el texto del mensaje. Solo un 200 con [] significa que el NIF no tiene mínimis registrados: un 400 o un 502 nunca equivale a «0 de mínimis» ni permite calcular el margen disponible. Cada concesión incluye concession_id (identificador único de la concesión en BDNS), concession_code (código público, p. ej. SB137062769), registration_date (fecha de registro en BDNS) e instrument (tipo de ayuda: subvención, préstamo, garantía…). Usa concession_id para no contar duplicados al sumar el total de mínimis: dos filas con el mismo concession_id son la misma concesión y cuentan una vez; con ids distintos son concesiones reales y cuentan todas, aunque coincidan convocatoria, fecha e importe. concession_amount es la ayuda equivalente concedida, también en préstamos y garantías. Si BDNS no envía algún campo (por ejemplo activity), sale null. Los datos se consultan en tiempo real en BDNS (infosubvenciones.es): si BDNS no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON, devuelve 502 con {\"error\": \"No se ha podido consultar BDNS, inténtalo más tarde\", \"code\": \"bdns_unavailable\"}. Un 502 es un fallo temporal del servicio externo, no significa que el NIF no tenga ayudas de mínimis: no lo trates como un array vacío y reintenta más tarde. En el peor caso la respuesta puede tardar unos 30 s (dos llamadas a BDNS de hasta 15 s cada una), así que usa un timeout de cliente mayor. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
         "security": [
           {
             "UserTokenAuth": []
@@ -4721,7 +4721,7 @@
                     "minimis": "REG (UE) 2023/2831 de minimis, General",
                     "concession_date": "2025-05-12",
                     "activity": "62 - Programación, consultoría y otras actividades relacionadas con la informática",
-                    "concession_amount": 9500,
+                    "concession_amount": 9500.0,
                     "concession_id": 118734521,
                     "concession_code": "SB118734521",
                     "registration_date": "2025-05-20",
@@ -4733,7 +4733,7 @@
                     "minimis": "REG (UE) 2023/2831 de minimis, General",
                     "concession_date": "2024-12-10",
                     "activity": "H - TRANSPORTE Y ALMACENAMIENTO; T - OTROS SERVICIOS",
-                    "concession_amount": 50000,
+                    "concession_amount": 50000.0,
                     "concession_id": 104562387,
                     "concession_code": "SB104562387",
                     "registration_date": "2024-12-18",
@@ -4744,22 +4744,68 @@
             }
           },
           "400": {
-            "description": "Falta el campo nif («El NIF es requerido») o no tiene un formato válido (mensaje de validación)."
-          },
-          "502": {
-            "description": "No se ha podido consultar BDNS (no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON). Fallo temporal: reintentar más tarde; no equivale a un array vacío.",
+            "description": "NIF ausente o inválido. code = nif_required si no se envía nif; code = invalid_nif si el formato, la longitud o el dígito o la letra de control no son válidos (DNI, NIE, NIF K/L/M o CIF). Es un error del usuario: pide que revise el NIF y no lo trates como «sin mínimis».",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Mensaje legible. Puede cambiar: no lo uses para decidir."
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "nif_required",
+                        "invalid_nif"
+                      ],
+                      "description": "Código estable del error."
+                    }
+                  }
+                },
+                "examples": {
+                  "nif_required": {
+                    "summary": "No se envía nif",
+                    "value": {
+                      "error": "El NIF es requerido",
+                      "code": "nif_required"
+                    }
+                  },
+                  "invalid_nif": {
+                    "summary": "Dígito de control incorrecto (p. ej. B4524548X)",
+                    "value": {
+                      "error": "El dígito de control del NIF es inválido",
+                      "code": "invalid_nif"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "No se ha podido consultar BDNS (no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON). code = bdns_unavailable. Fallo temporal: reintentar más tarde; no equivale a un array vacío ni permite calcular el margen de mínimis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Mensaje legible. Puede cambiar: no lo uses para decidir."
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "bdns_unavailable"
+                      ],
+                      "description": "Código estable del error."
                     }
                   }
                 },
                 "example": {
-                  "error": "No se ha podido consultar BDNS, inténtalo más tarde"
+                  "error": "No se ha podido consultar BDNS, inténtalo más tarde",
+                  "code": "bdns_unavailable"
                 }
               }
             }
@@ -4780,7 +4826,7 @@
         ],
         "summary": "Listado de subvenciones",
         "operationId": "v2_funds_list",
-        "description": "Listado de convocatorias activas (active=True) con un amplio sistema de filtros, incluyendo búsqueda semántica vectorizada (search_by_vectorized_text) que puede autocompletar filtros. Si se necesita el total de resultados y la respuesta no cabe en una página, seguir pidiendo páginas siguientes con el parámetro page hasta agotar los resultados (usar count). Para obtener solo convocatorias con concesiones publicadas (lo que antes devolvía /funds/concessions/, ya eliminado) envía with_concessions: true en requestData. Cada resultado incluye el número e importe de concesiones (concessions, concessions_amount), si tiene convocatorias relacionadas (related_funds), el origen de los datos (source) y la URL pública de la convocatoria (url) en el dominio de tu marca; usa siempre ese valor en lugar de construirla. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
+        "description": "Listado de convocatorias activas (active=True) con un amplio sistema de filtros, incluyendo búsqueda semántica vectorizada (search_by_vectorized_text) que puede autocompletar filtros. Si se necesita el total de resultados y la respuesta no cabe en una página, seguir pidiendo páginas siguientes con el parámetro page hasta agotar los resultados (usar count). Para obtener solo convocatorias con concesiones publicadas (lo que antes devolvía /funds/concessions/, ya eliminado) envía with_concessions: true en requestData. Cada resultado incluye el número e importe de concesiones (concessions, concessions_amount), si tiene convocatorias relacionadas (related_funds), el origen de los datos (source) y la URL pública de la convocatoria (url) en el dominio de tu marca; usa siempre ese valor en lugar de construirla. Con solo start_date (sin end_date) el resultado se limita a las convocatorias de ese mismo día, no «desde esa fecha»: para «desde X hasta hoy» envía también end_date con la fecha de hoy. Si alguna fecha no tiene formato aaaa-mm-dd devuelve 400 con {\"errors\": \"Formato de fecha inválido en *start_date*, usa aaaa-mm-dd\"}. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.",
         "security": [
           {
             "UserTokenAuth": []
@@ -4919,37 +4965,37 @@
                   "type": "string",
                   "format": "date",
                   "nullable": true,
-                  "description": "Fecha de apertura, inicio de rango. Formato YYYY-MM-DD."
+                  "description": "Fecha de apertura. Junto con end_date, inicio del rango. Si se envía sin end_date devuelve solo las convocatorias de ese mismo día (no «desde esa fecha»): para «desde X hasta hoy» envía también end_date con la fecha de hoy. Formato YYYY-MM-DD; con otro formato devuelve 400."
                 },
                 "end_date": {
                   "type": "string",
                   "format": "date",
                   "nullable": true,
-                  "description": "Fecha de apertura, fin de rango. Formato YYYY-MM-DD."
+                  "description": "Fecha de apertura, fin de rango. Solo se aplica junto con start_date: sin start_date se ignora. Formato YYYY-MM-DD; con otro formato devuelve 400."
                 },
                 "final_period_start_date": {
                   "type": "string",
                   "format": "date",
                   "nullable": true,
-                  "description": "Fecha de cierre, inicio de rango. Formato YYYY-MM-DD."
+                  "description": "Fecha de cierre, inicio de rango. Formato YYYY-MM-DD; con otro formato devuelve 400."
                 },
                 "final_period_end_date": {
                   "type": "string",
                   "format": "date",
                   "nullable": true,
-                  "description": "Fecha de cierre, fin de rango. Formato YYYY-MM-DD."
+                  "description": "Fecha de cierre, fin de rango. Formato YYYY-MM-DD; con otro formato devuelve 400."
                 },
                 "update_date_start": {
                   "type": "string",
                   "format": "date",
                   "nullable": true,
-                  "description": "Fecha de actualización, inicio de rango. Formato YYYY-MM-DD. Devuelve convocatorias con cualquier hito en el rango salvo la apertura del plazo de solicitud (convocatoria general, bases reguladoras, modificación o resolución, creación de fecha de inicio y modificación de fecha)."
+                  "description": "Fecha de actualización, inicio de rango. Formato YYYY-MM-DD; con otro formato devuelve 400. Devuelve convocatorias con cualquier hito en el rango salvo la apertura del plazo de solicitud (convocatoria general, bases reguladoras, modificación o resolución, creación de fecha de inicio y modificación de fecha)."
                 },
                 "update_date_end": {
                   "type": "string",
                   "format": "date",
                   "nullable": true,
-                  "description": "Fecha de actualización, fin de rango. Formato YYYY-MM-DD."
+                  "description": "Fecha de actualización, fin de rango. Formato YYYY-MM-DD; con otro formato devuelve 400."
                 },
                 "platform": {
                   "type": "string",
@@ -5119,7 +5165,22 @@
             }
           },
           "400": {
-            "description": "Filtros de fecha/monto inválidos, p.ej. {\"errors\": \"Rango de fechas inválidas\"} o {\"errors\": \"Rango de montos inválidos\"}."
+            "description": "Filtros inválidos: rango de fechas o de importes invertido ({\"errors\": \"Rango de fechas inválidas\"}, {\"errors\": \"Rango de montos inválidos\"}) o una fecha sin formato aaaa-mm-dd ({\"errors\": \"Formato de fecha inválido en *start_date*, usa aaaa-mm-dd\"}, con el nombre del campo que falla). La validación de formato aplica a start_date, end_date, final_period_start_date, final_period_end_date, update_date_start y update_date_end.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "errors": "Formato de fecha inválido en *start_date*, usa aaaa-mm-dd"
+                }
+              }
+            }
           },
           "401": {
             "description": "Falta la cabecera Authorization o el token no es válido."
@@ -5899,6 +5960,198 @@
           },
           "400": {
             "description": "Petición inválida (parámetros o formato incorrecto)."
+          },
+          "401": {
+            "description": "Falta la cabecera Authorization o el token no es válido."
+          },
+          "403": {
+            "description": "No autorizado (token del tipo incorrecto, o sin créditos suficientes en endpoints que consumen créditos)."
+          }
+        }
+      }
+    },
+    "/api/v2/search-filters/": {
+      "get": {
+        "tags": [
+          "Filtros"
+        ],
+        "summary": "Catálogo de filtros de búsqueda",
+        "operationId": "search_filters",
+        "description": "Devuelve, agrupado por categoría, el catálogo de valores con los que se filtra GET /funds/. Cada categoría trae param_name (la clave que hay que enviar en requestData de /funds/; null si la categoría no es un filtro), una description y sus items, todos ligeros: {id, name}, y en actions_v2 además group_id y group_name. Categorías: provinces, communities, applicants_v2, actions_v2, action_groups, activities_v2, types, region_types, origins y status_code. Frente a /data-filters/ (que sigue disponible sin cambios): no incluye CNAE (cnaes), planes de usuario (groups), credits ni user_profile; incluye los grupos temáticos de acciones (action_groups) y los estados de la convocatoria (status_code), y unifica los nombres (types_fund pasa a types y regions_types a region_types). action_groups no es un filtro (param_name null): para filtrar por un grupo, envía en actions_v2 los ids de las acciones con ese group_id. No consume créditos, solo requiere token de usuario.",
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "categories",
+            "in": "query",
+            "required": false,
+            "description": "Categorías a devolver, separadas por comas (p. ej. provinces,actions_v2). Sin este parámetro devuelve todas. Una categoría desconocida devuelve 400 con code invalid_category.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "provinces,actions_v2"
+          },
+          {
+            "name": "platform",
+            "in": "query",
+            "required": false,
+            "description": "Slug de la plataforma (marca blanca) cuyas restricciones se aplican al catálogo.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catálogo de filtros agrupado por categoría.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "categories": {
+                      "type": "object",
+                      "description": "Un objeto por categoría, con el nombre de la categoría como clave.",
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "param_name": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Clave que hay que enviar en requestData de /funds/. null si la categoría no es un filtro (action_groups)."
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "items": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "integer"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "group_id": {
+                                  "type": "integer",
+                                  "description": "Solo en actions_v2: id del grupo temático (action_groups)."
+                                },
+                                "group_name": {
+                                  "type": "string",
+                                  "description": "Solo en actions_v2: nombre del grupo temático."
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "categories": {
+                    "provinces": {
+                      "param_name": "provinces",
+                      "description": "Provincia donde aplica la convocatoria",
+                      "items": [
+                        {
+                          "id": 1,
+                          "name": "Álava"
+                        }
+                      ]
+                    },
+                    "actions_v2": {
+                      "param_name": "actions_v2",
+                      "description": "Acción a llevar a cabo por el solicitante",
+                      "items": [
+                        {
+                          "id": 69,
+                          "name": "Implantación de ERP",
+                          "group_id": 3,
+                          "group_name": "Transformación digital"
+                        }
+                      ]
+                    },
+                    "action_groups": {
+                      "param_name": null,
+                      "description": "Grupo temático de acciones",
+                      "items": [
+                        {
+                          "id": 3,
+                          "name": "Transformación digital"
+                        }
+                      ]
+                    },
+                    "status_code": {
+                      "param_name": "status_code",
+                      "description": "Estado de la convocatoria",
+                      "items": [
+                        {
+                          "id": 0,
+                          "name": "Pendiente"
+                        },
+                        {
+                          "id": 1,
+                          "name": "Abierta"
+                        },
+                        {
+                          "id": 2,
+                          "name": "Cerrada"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Alguna categoría de categories no existe. code = invalid_category; valid_categories lista las admitidas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "invalid_category"
+                      ]
+                    },
+                    "valid_categories": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "error": "Categorías no válidas: cnaes",
+                  "code": "invalid_category",
+                  "valid_categories": [
+                    "provinces",
+                    "communities",
+                    "applicants_v2",
+                    "actions_v2",
+                    "action_groups",
+                    "activities_v2",
+                    "types",
+                    "region_types",
+                    "origins",
+                    "status_code"
+                  ]
+                }
+              }
+            }
           },
           "401": {
             "description": "Falta la cabecera Authorization o el token no es válido."

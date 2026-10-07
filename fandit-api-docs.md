@@ -1,6 +1,6 @@
 # Documentación técnica de la API de FANDIT (referencia única)
 
-Este documento reúne en un solo archivo continuo toda la documentación técnica de la API REST v2 de FANDIT (y los endpoints legacy v1 de Single Sign-On), pensado para ser leído de un tirón por un LLM sin depender de navegación entre páginas. Cubre: autenticación, manejo de errores, paginación, y la referencia completa de los 45 endpoints agrupados por bloque funcional (Filtros, Autenticación, Usuarios, Subvenciones, Expedientes, Clientes, Contactos, SSO legacy). No cubre otras áreas del producto FANDIT (Buscador web, Asistente IA, Alertas, Automatizaciones, etc.) más allá de lo que se expone vía esta API.
+Este documento reúne en un solo archivo continuo toda la documentación técnica de la API REST v2 de FANDIT (y los endpoints legacy v1 de Single Sign-On), pensado para ser leído de un tirón por un LLM sin depender de navegación entre páginas. Cubre: autenticación, manejo de errores, paginación, y la referencia completa de los 46 endpoints agrupados por bloque funcional (Filtros, Autenticación, Usuarios, Subvenciones, Expedientes, Clientes, Contactos, SSO legacy). No cubre otras áreas del producto FANDIT (Buscador web, Asistente IA, Alertas, Automatizaciones, etc.) más allá de lo que se expone vía esta API.
 
 ## URLs base
 
@@ -23,18 +23,18 @@ Authorization: ExpertToken TU_API_KEY    (token de experto)
 
 Los propios endpoints de login (`/users/login/`, `/experts/login`) y los endpoints legacy de SSO en `/api/v1/users/partners-brand/` **no** llevan cabecera `Authorization`: en el caso de login porque es lo que se está solicitando, y en el caso de SSO porque el token (o un OTP) viaja como parámetro dentro del body de la propia petición, no como cabecera.
 
-Dentro del bloque Subvenciones, la mayoría de endpoints además requieren **créditos disponibles** en la cuenta del usuario. Un `403` en esos endpoints puede significar dos cosas distintas y conviene distinguirlas de cara al usuario final: token ausente/incorrecto, o token válido pero sin créditos suficientes. El único endpoint del bloque Subvenciones que **no** consume créditos es `GET /api/v2/data-filters/`.
+Dentro del bloque Subvenciones, la mayoría de endpoints además requieren **créditos disponibles** en la cuenta del usuario. Un `403` en esos endpoints puede significar dos cosas distintas y conviene distinguirlas de cara al usuario final: token ausente/incorrecto, o token válido pero sin créditos suficientes. Los únicos endpoints del bloque Subvenciones que **no** consumen créditos son los catálogos de filtros: `GET /api/v2/data-filters/` y `GET /api/v2/search-filters/`.
 
 ## Códigos de respuesta estándar
 
 Salvo que se indique lo contrario en la ficha de un endpoint concreto, estos son los códigos que se pueden recibir en cualquier endpoint de la API:
 
 - **200** — Todo correcto.
-- **400** — Petición inválida: parámetros faltantes, con formato incorrecto, o que no pasan las validaciones del endpoint (ver notas específicas de cada endpoint; por ejemplo, rangos de fecha o de importe invertidos en el listado de subvenciones).
+- **400** — Petición inválida: parámetros faltantes, con formato incorrecto, o que no pasan las validaciones del endpoint (ver notas específicas de cada endpoint; por ejemplo, rangos de fecha o de importe invertidos o fechas sin formato `aaaa-mm-dd` en el listado de subvenciones, o un NIF con dígito de control incorrecto en mínimis).
 - **401** — La API key falta o no es válida. Revisa la cabecera `Authorization` y que lleve el prefijo `Token`.
 - **403** — Dependiendo del endpoint: el token es del tipo que no corresponde (se necesita token de experto y se envió uno de usuario, o viceversa), o el token es válido pero la cuenta no tiene créditos suficientes para ese endpoint concreto.
 - **404** — El recurso no existe. Ojo: en los endpoints de detalle de subvención (`fund-details`), un 404 no siempre significa que el id/slug esté mal escrito — esos endpoints solo cubren convocatorias **activas**; una convocatoria histórica/ya resuelta da 404 ahí aunque el identificador sea perfectamente válido (para esas, usar los endpoints de concesiones).
-- **502** — Solo en `POST /api/v2/funds/chatbot/` (el servicio externo de chatbot no devolvió una respuesta JSON válida) y en `POST /api/v2/fund-minimis-by-nif/` (no se ha podido consultar BDNS). Es un fallo temporal de un servicio externo: se puede reintentar más tarde.
+- **502** — Solo en `POST /api/v2/funds/chatbot/` (el servicio externo de chatbot no devolvió una respuesta JSON válida) y en `POST /api/v2/fund-minimis-by-nif/` (no se ha podido consultar BDNS; `code: "bdns_unavailable"`). Es un fallo temporal de un servicio externo: se puede reintentar más tarde.
 
 
 ## Paginación
@@ -49,7 +49,10 @@ Algunas convocatorias tienen más de 1.000 concesiones asociadas (por ejemplo, u
 
 ## Otras particularidades a tener en cuenta
 
-**Formato de fechas.** Los campos de fecha del bloque Subvenciones (`start_date`, `end_date`, `final_period_start_date`, `final_period_end_date`, `update_date_start`, `update_date_end`) deben enviarse en formato exacto `YYYY-MM-DD`.
+**Formato de fechas.** Los campos de fecha del bloque Subvenciones (`start_date`, `end_date`, `final_period_start_date`, `final_period_end_date`, `update_date_start`, `update_date_end`) deben enviarse en formato exacto `YYYY-MM-DD`. Con cualquier otro formato, `GET /funds/` devuelve `400` con `{"errors": "Formato de fecha inválido en *start_date*, usa aaaa-mm-dd"}` (con el nombre del campo que falla).
+
+
+**`start_date` sin `end_date` filtra un único día.** En `GET /funds/`, `start_date` + `end_date` devuelve las convocatorias del rango; **solo `start_date`** devuelve las de **ese mismo día**, no «desde esa fecha»; y `end_date` sin `start_date` se ignora. Para «desde X hasta hoy», envía también `end_date` con la fecha de hoy, por ejemplo `{"communities": [10], "start_date": "2025-01-01", "end_date": "2026-10-05", "with_concessions": true}`.
 
 
 **`bdns` debe ser un número entero.** El filtro `bdns` (código BDNS) del listado de subvenciones espera un valor numérico entero.
@@ -79,7 +82,7 @@ Algunas convocatorias tienen más de 1.000 concesiones asociadas (por ejemplo, u
 **Autenticación:** Token de usuario
 
 
-Devuelve el catálogo completo de valores de referencia usados por el resto de endpoints: tipos de solicitante, actividades/sectores, comunidades autónomas y provincias (con provinces anidadas), líneas de crédito, orígenes de fondos, tipos de ayuda, CNAEs, grupos de acción, etc. Cada elemento trae su id, que es el que hay que usar como filtro en los demás endpoints. Los ids devueltos aquí bajo applicants, activities y actions son compatibles con los campos applicants_v2/activities_v2/actions_v2 usados en /funds/ (mismo espacio de ids, a pesar de la diferencia de nombre). Las actividades (activities) ya no incluyen su lista de CNAE. El catálogo de CNAE sigue disponible en la lista de primer nivel cnaes, pero está previsto eliminarla en una próxima versión. No consume créditos, solo requiere token de usuario.
+Devuelve el catálogo completo de valores de referencia usados por el resto de endpoints: tipos de solicitante, actividades/sectores, comunidades autónomas y provincias (con provinces anidadas), líneas de crédito, orígenes de fondos, tipos de ayuda, CNAEs, grupos de acción, etc. Cada elemento trae su id, que es el que hay que usar como filtro en los demás endpoints. Los ids devueltos aquí bajo applicants, activities y actions son compatibles con los campos applicants_v2/activities_v2/actions_v2 usados en /funds/ (mismo espacio de ids, a pesar de la diferencia de nombre). Las actividades (activities) ya no incluyen su lista de CNAE. El catálogo de CNAE sigue disponible en la lista de primer nivel cnaes, pero está previsto eliminarla en una próxima versión. Para un catálogo más ligero, con todos los elementos como {id, name}, los grupos de acciones (action_groups), los estados (status_code) y el nombre del parámetro de /funds/ de cada categoría, usa `GET /api/v2/search-filters/`. No consume créditos, solo requiere token de usuario.
 
 
 **Ejemplo de petición:**
@@ -227,6 +230,132 @@ curl --request GET \
 
 **Notas de errores específicas de este endpoint:**
 
+
+
+
+---
+
+
+#### Catálogo de filtros de búsqueda — `GET /api/v2/search-filters/`
+
+**Autenticación:** Token de usuario
+
+
+Devuelve, agrupado por categoría, el catálogo de valores con los que se filtra `GET /funds/`. Cada categoría trae `param_name` (la clave que hay que enviar en `requestData` de `/funds/`; `null` si la categoría no es un filtro), una `description` y sus `items`, todos ligeros: `{id, name}`, y en `actions_v2` además `group_id` y `group_name`. `GET /api/v2/data-filters/` sigue disponible sin cambios. No consume créditos, solo requiere token de usuario.
+
+
+**Parámetros:**
+
+
+| Nombre | Ubicación | Tipo | Obligatorio | Descripción |
+|---|---|---|---|---|
+| `categories` | query | string | No | Categorías a devolver, separadas por comas (p. ej. `provinces,actions_v2`). Sin este parámetro devuelve todas. Una categoría desconocida devuelve 400 con `code: "invalid_category"`. |
+| `platform` | query | string | No | Slug de la plataforma (marca blanca) cuyas restricciones se aplican al catálogo. |
+
+
+**Categorías disponibles:**
+
+
+| Categoría | `param_name` (clave en `requestData` de `/funds/`) | Campos de cada elemento |
+|---|---|---|
+| `provinces` | `provinces` | `id`, `name` |
+| `communities` | `communities` | `id`, `name` |
+| `applicants_v2` | `applicants_v2` | `id`, `name` |
+| `actions_v2` | `actions_v2` | `id`, `name`, `group_id`, `group_name` |
+| `action_groups` | `null` (no es un filtro) | `id`, `name` |
+| `activities_v2` | `activities_v2` | `id`, `name` |
+| `types` | `types` | `id`, `name` |
+| `region_types` | `region_types` | `id`, `name` |
+| `origins` | `origins` | `id`, `name` |
+| `status_code` | `status_code` | `id`, `name` (`0` Pendiente, `1` Abierta, `2` Cerrada) |
+
+**Diferencias con `GET /data-filters/`:**
+
+- No incluye CNAE (`cnaes`), planes de usuario (`groups`), `credits` ni `user_profile`.
+- Incluye los grupos temáticos de acciones (`action_groups`) y los estados de la convocatoria (`status_code`).
+- Nombres unificados: `types_fund` pasa a `types` y `regions_types` a `region_types`.
+- Todos los elementos son ligeros: `{id, name}`.
+
+**Cómo usarlo para filtrar en `GET /funds/`:** envía los ids en `requestData` bajo la clave que indica `param_name`. `action_groups` no es un filtro: para filtrar por un grupo temático, envía en `actions_v2` los ids de las acciones de `actions_v2` que tienen ese `group_id`.
+
+
+**Ejemplo de petición:**
+
+
+```bash
+curl --request GET \
+  --url 'https://api.fandit.es/api/v2/search-filters/' \
+  --get \
+  --data-urlencode 'categories=provinces,actions_v2,action_groups,status_code' \
+  --header 'Authorization: Token TU_API_KEY'
+```
+
+
+**Ejemplo de respuesta:**
+
+
+```json
+{
+  "categories": {
+    "provinces": {
+      "param_name": "provinces",
+      "description": "Provincia donde aplica la convocatoria",
+      "items": [
+        {
+          "id": 1,
+          "name": "Álava"
+        }
+      ]
+    },
+    "actions_v2": {
+      "param_name": "actions_v2",
+      "description": "Acción a llevar a cabo por el solicitante",
+      "items": [
+        {
+          "id": 69,
+          "name": "Implantación de ERP",
+          "group_id": 3,
+          "group_name": "Transformación digital"
+        }
+      ]
+    },
+    "action_groups": {
+      "param_name": null,
+      "description": "Grupo temático de acciones",
+      "items": [
+        {
+          "id": 3,
+          "name": "Transformación digital"
+        }
+      ]
+    },
+    "status_code": {
+      "param_name": "status_code",
+      "description": "Estado de la convocatoria",
+      "items": [
+        {
+          "id": 0,
+          "name": "Pendiente"
+        },
+        {
+          "id": 1,
+          "name": "Abierta"
+        },
+        {
+          "id": 2,
+          "name": "Cerrada"
+        }
+      ]
+    }
+  }
+}
+```
+
+
+**Notas de errores específicas de este endpoint:**
+
+
+- `400`: Alguna categoría de `categories` no existe. Cuerpo: `{"error": "Categorías no válidas: cnaes", "code": "invalid_category", "valid_categories": ["provinces", "communities", "applicants_v2", "actions_v2", "action_groups", "activities_v2", "types", "region_types", "origins", "status_code"]}`.
 
 
 
@@ -1616,7 +1745,7 @@ curl --request GET \
 **Autenticación:** Token de usuario
 
 
-Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Si el NIF no tiene concesiones devuelve 200 con un array vacío. Si falta el NIF devuelve 400 con el error «El NIF es requerido», y si no es válido, 400 con el mensaje de validación. Cada concesión incluye concession_id (identificador único de la concesión en BDNS), concession_code (código público, p. ej. SB137062769), registration_date (fecha de registro en BDNS) e instrument (tipo de ayuda: subvención, préstamo, garantía…). Usa concession_id para no contar duplicados al sumar el total de mínimis: dos filas con el mismo concession_id son la misma concesión y cuentan una vez; con ids distintos son concesiones reales y cuentan todas, aunque coincidan convocatoria, fecha e importe. concession_amount es la ayuda equivalente concedida, también en préstamos y garantías. Si BDNS no envía algún campo (por ejemplo activity), sale null. Los datos se consultan en tiempo real en BDNS (infosubvenciones.es): si BDNS no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON, devuelve 502 con {"error": "No se ha podido consultar BDNS, inténtalo más tarde"}. Un 502 es un fallo temporal del servicio externo, no significa que el NIF no tenga ayudas de mínimis: no lo trates como un array vacío y reintenta más tarde. En el peor caso la respuesta puede tardar unos 30 s (dos llamadas a BDNS de hasta 15 s cada una), así que usa un timeout de cliente mayor. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
+Devuelve todas las concesiones sujetas al reglamento de mínimis recibidas por un NIF/CIF concreto. La respuesta es un array plano, sin paginar. Útil para calcular cuánto ha recibido ya un beneficiario en régimen de mínimis antes de solicitar una nueva ayuda. Si el NIF no tiene concesiones devuelve 200 con un array vacío. Antes de consultar BDNS se valida el NIF: formato, longitud y dígito o letra de control de DNI, NIE (X/Y/Z), NIF K/L/M y CIF. Los errores devuelven un objeto {"error": "...", "code": "..."} con un code estable (ver notas de errores): decide según code, no según el texto del mensaje. Solo un 200 con [] significa que el NIF no tiene mínimis registrados: un 400 o un 502 nunca equivale a «0 de mínimis» ni permite calcular el margen disponible. Cada concesión incluye concession_id (identificador único de la concesión en BDNS), concession_code (código público, p. ej. SB137062769), registration_date (fecha de registro en BDNS) e instrument (tipo de ayuda: subvención, préstamo, garantía…). Usa concession_id para no contar duplicados al sumar el total de mínimis: dos filas con el mismo concession_id son la misma concesión y cuentan una vez; con ids distintos son concesiones reales y cuentan todas, aunque coincidan convocatoria, fecha e importe. concession_amount es la ayuda equivalente concedida, también en préstamos y garantías. Si BDNS no envía algún campo (por ejemplo activity), sale null. Los datos se consultan en tiempo real en BDNS (infosubvenciones.es): si BDNS no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON, devuelve 502 con {"error": "No se ha podido consultar BDNS, inténtalo más tarde", "code": "bdns_unavailable"}. Un 502 es un fallo temporal del servicio externo, no significa que el NIF no tenga ayudas de mínimis: no lo trates como un array vacío y reintenta más tarde. En el peor caso la respuesta puede tardar unos 30 s (dos llamadas a BDNS de hasta 15 s cada una), así que usa un timeout de cliente mayor. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
 
 
 **Cuerpo de la petición (JSON):**
@@ -1695,9 +1824,19 @@ Si BDNS no envía algún campo, sale `null`.
 **Notas de errores específicas de este endpoint:**
 
 
-- `400`: Falta el campo `nif` («El NIF es requerido») o no tiene un formato válido (mensaje de validación).
-- Si el NIF no tiene concesiones de mínimis, la respuesta es `200` con un array vacío (`[]`), no un `404`.
-- `502`: No se ha podido consultar BDNS (no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON). Cuerpo: `{"error": "No se ha podido consultar BDNS, inténtalo más tarde"}`. Es un fallo temporal: reintenta más tarde y no lo interpretes como `[]` (una empresa sin mínimis y una consulta fallida son cosas distintas, y para el límite de mínimis importa la diferencia).
+Los errores son un objeto con `error` (mensaje legible, puede cambiar) y `code` (estable). Decide siempre según `code`:
+
+| HTTP | `code` | Cuándo | Cuerpo |
+|---|---|---|---|
+| `400` | `nif_required` | No se envía `nif` | `{"error": "El NIF es requerido", "code": "nif_required"}` |
+| `400` | `invalid_nif` | Formato, longitud o dígito/letra de control inválido (DNI, NIE X/Y/Z, NIF K/L/M o CIF) | `{"error": "El dígito de control del NIF es inválido", "code": "invalid_nif"}` (el texto varía según el fallo) |
+| `502` | `bdns_unavailable` | BDNS no responde o devuelve error | `{"error": "No se ha podido consultar BDNS, inténtalo más tarde", "code": "bdns_unavailable"}` |
+| `200` | — | Sin resultados | `[]` |
+
+- `400` con `nif_required` o `invalid_nif`: es un error del usuario. Pide que revise el NIF; nunca lo muestres como «Total: 0» ni calcules el margen de mínimis. Un NIF con dígito de control incorrecto (p. ej. `B4524548X`) ya no llega a BDNS: antes devolvía `[]` y no se distinguía de una empresa sin mínimis.
+- Antes, el `400` de NIF inválido devolvía un texto suelto; ahora es un objeto con `error` y `code`.
+- Si el NIF no tiene concesiones de mínimis, la respuesta es `200` con un array vacío (`[]`), no un `404`. Es el único caso que significa «sin mínimis registrados».
+- `502` con `bdns_unavailable`: no se ha podido consultar BDNS (no responde, tarda más de 15 s, devuelve un error HTTP o una respuesta que no es JSON). Es un fallo temporal: reintenta más tarde y no lo interpretes como `[]` (una empresa sin mínimis y una consulta fallida son cosas distintas, y para el límite de mínimis importa la diferencia).
 - La respuesta puede tardar hasta unos 30 s en el peor caso: configura el timeout del cliente HTTP por encima de ese valor.
 
 
@@ -1710,7 +1849,7 @@ Si BDNS no envía algún campo, sale `null`.
 **Autenticación:** Token de usuario
 
 
-Listado de convocatorias activas (active=True) con un amplio sistema de filtros, incluyendo búsqueda semántica vectorizada (search_by_vectorized_text) que puede autocompletar filtros. Si se necesita el total de resultados y la respuesta no cabe en una página, seguir pidiendo páginas siguientes con el parámetro page hasta agotar los resultados (usar count). Para obtener solo convocatorias con concesiones publicadas (lo que antes devolvía /funds/concessions/, ya eliminado) envía with_concessions: true en requestData. Cada resultado incluye el número e importe de concesiones (concessions, concessions_amount), si tiene convocatorias relacionadas (related_funds), el origen de los datos (source) y la URL pública de la convocatoria (url) en el dominio de tu marca; usa siempre ese valor en lugar de construirla. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
+Listado de convocatorias activas (active=True) con un amplio sistema de filtros, incluyendo búsqueda semántica vectorizada (search_by_vectorized_text) que puede autocompletar filtros. Si se necesita el total de resultados y la respuesta no cabe en una página, seguir pidiendo páginas siguientes con el parámetro page hasta agotar los resultados (usar count). Para obtener solo convocatorias con concesiones publicadas (lo que antes devolvía /funds/concessions/, ya eliminado) envía with_concessions: true en requestData. Cada resultado incluye el número e importe de concesiones (concessions, concessions_amount), si tiene convocatorias relacionadas (related_funds), el origen de los datos (source) y la URL pública de la convocatoria (url) en el dominio de tu marca; usa siempre ese valor en lugar de construirla. Con solo start_date (sin end_date) el resultado se limita a las convocatorias de ese mismo día, no «desde esa fecha»: para «desde X hasta hoy» envía también end_date con la fecha de hoy. Si alguna fecha no tiene formato aaaa-mm-dd devuelve 400. Para conocer los ids y la clave de cada filtro, usa `GET /search-filters/`. Requiere token de usuario y créditos disponibles en la cuenta: devuelve 403 si el usuario no tiene créditos suficientes, distinto de un fallo de autenticación.
 
 
 **Parámetros:**
@@ -1743,12 +1882,12 @@ Campos de `requestData` (Todos los campos son opcionales. Se envía serializado 
 | `with_concessions` | boolean | No | Solo convocatorias con al menos una concesión publicada. Por defecto false. Acepta true/"true"/1/"1" como verdadero. |
 | `with_related_funds` | boolean | No | Solo convocatorias con convocatorias relacionadas. Por defecto false. Se combina con with_concessions y con el resto de filtros. Acepta true/"true"/1/"1" como verdadero. |
 | `reviewed` | boolean | No | Acepta true/"true"/1/"1" como verdadero; cualquier otro valor se trata como falso. |
-| `start_date` | string | No | Fecha de apertura, inicio de rango. Formato YYYY-MM-DD. |
-| `end_date` | string | No | Fecha de apertura, fin de rango. Formato YYYY-MM-DD. |
-| `final_period_start_date` | string | No | Fecha de cierre, inicio de rango. Formato YYYY-MM-DD. |
-| `final_period_end_date` | string | No | Fecha de cierre, fin de rango. Formato YYYY-MM-DD. |
-| `update_date_start` | string | No | Fecha de actualización, inicio de rango. Formato YYYY-MM-DD. Devuelve convocatorias con cualquier hito en el rango salvo la apertura del plazo de solicitud (convocatoria general, bases reguladoras, modificación o resolución, creación de fecha de inicio y modificación de fecha). |
-| `update_date_end` | string | No | Fecha de actualización, fin de rango. Formato YYYY-MM-DD. |
+| `start_date` | string | No | Fecha de apertura. Junto con `end_date`, inicio del rango. Si se envía sin `end_date` devuelve solo las convocatorias de ese mismo día (no «desde esa fecha»): para «desde X hasta hoy» envía también `end_date` con la fecha de hoy. Formato YYYY-MM-DD; con otro formato devuelve 400. |
+| `end_date` | string | No | Fecha de apertura, fin de rango. Solo se aplica junto con `start_date`: sin `start_date` se ignora. Formato YYYY-MM-DD; con otro formato devuelve 400. |
+| `final_period_start_date` | string | No | Fecha de cierre, inicio de rango. Formato YYYY-MM-DD; con otro formato devuelve 400. |
+| `final_period_end_date` | string | No | Fecha de cierre, fin de rango. Formato YYYY-MM-DD; con otro formato devuelve 400. |
+| `update_date_start` | string | No | Fecha de actualización, inicio de rango. Formato YYYY-MM-DD; con otro formato devuelve 400. Devuelve convocatorias con cualquier hito en el rango salvo la apertura del plazo de solicitud (convocatoria general, bases reguladoras, modificación o resolución, creación de fecha de inicio y modificación de fecha). |
+| `update_date_end` | string | No | Fecha de actualización, fin de rango. Formato YYYY-MM-DD; con otro formato devuelve 400. |
 | `platform` | string | No | Slug de plataforma. |
 | `office` | - | No | Filtro de oficina/organismo (int o string). |
 | `bdns` | integer | No | Código BDNS. Debe enviarse como número entero. |
@@ -1807,6 +1946,7 @@ curl --request GET \
 
 
 - `400`: Filtros de fecha/monto inválidos, p.ej. {"errors": "Rango de fechas inválidas"} o {"errors": "Rango de montos inválidos"}.
+- `400`: Fecha sin formato `aaaa-mm-dd` en `start_date`, `end_date`, `final_period_start_date`, `final_period_end_date`, `update_date_start` o `update_date_end`: {"errors": "Formato de fecha inválido en *start_date*, usa aaaa-mm-dd"} (con el nombre del campo que falla). Antes, una búsqueda con `start_date` y sin `end_date` devolvía 500; ya no.
 
 
 
@@ -3871,13 +4011,15 @@ curl --request PATCH \
 
 | Si se necesita... | Usar |
 |---|---|
-| Traducir un filtro en texto libre a un id numérico | `GET /data-filters/` (o dejar que `GET /funds/` lo infiera vía `search_by_vectorized_text`) |
+| Traducir un filtro en texto libre a un id numérico | `GET /search-filters/` (trae el `param_name` de cada categoría; o dejar que `GET /funds/` lo infiera vía `search_by_vectorized_text`) |
+| Filtrar por un grupo temático de acciones | `GET /search-filters/?categories=actions_v2,action_groups` y enviar en `actions_v2` los ids de las acciones con ese `group_id` |
+| Buscar convocatorias desde una fecha hasta hoy | `GET /funds/` con `start_date` **y** `end_date` = hoy (solo `start_date` filtra un único día) |
 | Explorar o filtrar el catálogo general de convocatorias abiertas | `GET /funds/` |
 | Ver el detalle completo de una convocatoria activa concreta | `GET /fund-details/{identifier}/` (id o slug) |
 | Ver convocatorias ya resueltas / con concesiones publicadas | `GET /funds/` con `with_concessions: true` en `requestData` |
 | Ver qué ayudas ha recibido una empresa concreta (por CIF) | `GET /funds/concessions/beneficiaries-by-cif/` con `nif` |
 | Ver quién recibió una convocatoria concreta | `GET /funds/concessions/beneficiaries/` con `fund_id`/`fund_slug` |
-| Saber cuánto ha recibido una empresa en régimen de mínimis | `POST /fund-minimis-by-nif/` con `nif` |
+| Saber cuánto ha recibido una empresa en régimen de mínimis | `POST /fund-minimis-by-nif/` con `nif` (decide los errores por `code`; solo `200` con `[]` es «sin mínimis») |
 | Ver la normativa/documentación legal de una convocatoria | `GET /funds/fund-normative/{id}/` |
 | Saber cómo se evalúan las solicitudes | `GET /funds/fund-evaluation/{id}/` |
 | Ver convocatorias relacionadas (otras ediciones de la misma ayuda) | `GET /funds/fund-related/{id}/`, o `GET /funds/` con `with_related_funds: true` para listar solo las que tienen |

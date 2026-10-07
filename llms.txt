@@ -77,6 +77,7 @@ FANDIT expone una API REST (`https://api.fandit.es`) para integrar subvenciones,
 - [Bienvenida / primeros pasos](https://fandit.es/api/welcome): introducción a la API y a los endpoints disponibles.
 - [Api Key](https://fandit.es/api/api-key): cómo obtener y usar tu clave de API.
 - [Filtros de datos](https://fandit.es/api/data-filters): parámetros de filtrado comunes a los endpoints.
+- [Catálogo de filtros de búsqueda](https://fandit.es/api/search-filters): catálogo ligero de filtros de `GET /funds/` por categoría, con el parámetro que hay que enviar en cada una, grupos de acciones y estados.
 - [Autenticación (SSO)](https://fandit.es/api/sso/introduction): inicio de sesión único para usuarios y expertos; alta de usuarios (`sso/users-management/registration`), cambio de contraseña, baja y validación de email.
 - [Autenticación v2](https://fandit.es/api/v2/auth/log-in): login de usuarios y de expertos, y consulta de la sesión actual.
 - [Usuarios](https://fandit.es/api/v2/users/list): alta, consulta, actualización y baja de usuarios.
