@@ -104,7 +104,7 @@ FANDIT expone una API REST (`https://api.fandit.es`) para integrar subvenciones,
 
 - [Sobre FANDIT](https://fandit.es/sobre-fandit): quiénes somos y cómo ha evolucionado la plataforma desde 2019.
 - [Contacto](https://fandit.es/contacto)
-- [Blog](https://blog.fandit.es): artículos sobre subvenciones, ayudas públicas y financiación empresarial en España.
+- [Blog](https://fandit.es/blog/): artículos sobre subvenciones, ayudas públicas y financiación empresarial en España.
 - [Mapa del sitio](https://fandit.es/sitemap)
 
 ## Notas para agentes e IA
